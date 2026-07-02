@@ -25,7 +25,7 @@ docs/source_data/*.csv
 docs/source_data/*.xlsx
 docs/source_data/*.xls
 docs/source_data/*.tsv
-tmp/imports/
+tmp/
 
 # OS/editor
 .DS_Store
