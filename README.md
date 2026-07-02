@@ -42,6 +42,7 @@ Read in this order:
 15. [Import Plan](docs/14_Import_Plan.md)
 16. [Android Local Data](docs/15_Android_Local_Data.md)
 17. [Web Dashboard Technical Plan](docs/16_Web_Dashboard_Technical_Plan.md)
+18. [Implementation Status](docs/17_Implementation_Status.md)
 
 Source paper documents are stored in [docs/original_documents](docs/original_documents).
 Source planning data is stored in [docs/source_data](docs/source_data).
@@ -49,3 +50,31 @@ Source planning data is stored in [docs/source_data](docs/source_data).
 ## Current Status
 
 Phase 1 technical design is in progress. The current docs translate the product model into Supabase/PostgreSQL schema, RLS policies, storage policies, sync contracts, import planning, Android local data, and web dashboard implementation contracts.
+
+## Development
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Run the manager web dashboard:
+
+```bash
+pnpm dev
+```
+
+Validate the local school CSV, if present:
+
+```bash
+pnpm validate:school-csv
+```
+
+Generate local import SQL from the ignored source CSV:
+
+```bash
+pnpm generate:school-import
+```
+
+The raw school export in `docs/source_data/schools_rows.csv` is intentionally ignored by Git because it contains sensitive school/contact data.

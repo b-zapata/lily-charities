@@ -1,0 +1,19 @@
+{
+  "name": "lily-charities",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dev": "pnpm --filter @lily/web dev",
+    "build": "pnpm --filter @lily/web build",
+    "lint": "pnpm --filter @lily/web lint",
+    "typecheck": "pnpm --filter @lily/web typecheck",
+    "validate:school-csv": "node scripts/validate-school-csv.mjs",
+    "generate:school-import": "node scripts/generate-school-import-sql.mjs"
+  },
+  "dependencies": {
+    "csv-parse": "^5.6.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

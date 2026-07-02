@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build output
+.next/
+out/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Local Supabase
+.branches/
+.temp/
+.supabase/
+
+# Local sensitive/source exports
+docs/source_data/*.csv
+docs/source_data/*.xlsx
+docs/source_data/*.xls
+docs/source_data/*.tsv
+tmp/imports/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
