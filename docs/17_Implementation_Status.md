@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Overnight implementation checkpoint.
+Status: Backend/web checkpoint after CSS, export, import, and review-flow hardening.
 
 ## Completed
 
@@ -33,8 +33,29 @@ Added a pnpm workspace and Next.js manager dashboard app:
 - Change request review page.
 - Export screen scaffold.
 - User management table scaffold.
+- Tailwind global CSS is wired correctly.
+- Dashboard routes enforce manager/admin role when Supabase is configured.
+- Schools CSV export route is wired to `school_export_view`.
+- Approval review lets managers edit applied JSON and component decisions before submitting.
 
 The dashboard is wired to the Supabase views and RPC functions defined in the backend migrations. With no Supabase env vars, it renders safe empty states and setup warnings.
+
+### Setup And Import Helpers
+
+Added/updated helpers:
+
+- `pnpm bootstrap:manager` creates or promotes the first manager profile using the Supabase service role key.
+- Supabase CLI is available as a local dev dependency through `pnpm supabase`.
+- `pnpm generate:school-import` now generates rerunnable import SQL for imported contact rows by replacing contacts marked `Imported from schools_rows.csv`.
+- `supabase/README.md` documents local setup, hosted setup, manager bootstrap, and school import flow.
+
+### Review Workflow Backend
+
+Added migration `20260702000600_review_workflow_apply_data.sql`:
+
+- Pending initial assessment submission marks the school as `assessed`/`pending` while awaiting manager review.
+- Manager approval can apply `new_school`, `school_edit`, `assessment_submission`, `agreement_submission`, `photo_upload`, and `lifecycle_update` data.
+- Review decisions still write audit events.
 
 ## Validation Run
 
@@ -59,18 +80,17 @@ CSV validation result:
 
 ## Not Yet Done
 
-- Supabase migrations have not been applied to a live/local Supabase instance in this environment because the Supabase CLI is not installed.
+- Supabase migrations have not been applied to a live/local Supabase instance in this environment because project credentials and a reachable Supabase/Postgres target are not available in this shell.
 - RLS/storage policies have not been tested against real Supabase auth sessions yet.
 - Generated agreement PDF implementation is still a backend job placeholder.
-- Export download action is scaffolded but not wired to a real CSV/XLSX response yet.
 - User invitation/account creation flow is scaffold-level only.
 - Android app implementation has not started.
 
 ## Next Recommended Steps
 
-1. Install/use Supabase CLI and run migrations locally.
-2. Fix any SQL issues found by `supabase db reset`.
-3. Import a staging copy of the school CSV using the generated SQL.
-4. Create test manager/volunteer accounts.
-5. Wire export downloads.
-6. Add focused dashboard tests once the data layer is connected.
+1. Install/use Supabase CLI and run migrations locally or against the hosted project.
+2. Fix any SQL issues found by `supabase db reset` or `supabase db push`.
+3. Create the first manager profile with `pnpm bootstrap:manager`.
+4. Import a staging copy of the school CSV using the generated SQL.
+5. Create test manager/volunteer accounts.
+6. Test RLS, storage uploads, approval review, and CSV export against real Supabase auth sessions.

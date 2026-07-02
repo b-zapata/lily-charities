@@ -7,13 +7,18 @@
     "build": "pnpm --filter @lily/web build",
     "lint": "pnpm --filter @lily/web lint",
     "typecheck": "pnpm --filter @lily/web typecheck",
+    "supabase": "supabase",
+    "supabase:db:reset": "supabase db reset",
+    "supabase:db:push": "supabase db push",
     "validate:school-csv": "node scripts/validate-school-csv.mjs",
-    "generate:school-import": "node scripts/generate-school-import-sql.mjs"
+    "generate:school-import": "node scripts/generate-school-import-sql.mjs",
+    "bootstrap:manager": "pnpm --filter @lily/web bootstrap:manager"
   },
   "dependencies": {
     "csv-parse": "^5.6.0"
   },
   "devDependencies": {
+    "supabase": "^2.109.0",
     "typescript": "^5.7.3"
   }
 }

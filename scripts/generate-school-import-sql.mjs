@@ -69,7 +69,11 @@ for (const [index, row] of rows.entries()) {
   lines.push("    name_bangla = excluded.name_bangla,");
   lines.push("    address = excluded.address,");
   lines.push("    donor_id = excluded.donor_id,");
+  lines.push("    needs_map_pin_cleanup = excluded.needs_map_pin_cleanup,");
+  lines.push("    data_quality_flags = excluded.data_quality_flags,");
   lines.push("    summary_notes = excluded.summary_notes,");
+  lines.push("    source_import_filename = excluded.source_import_filename,");
+  lines.push("    source_import_row_number = excluded.source_import_row_number,");
   lines.push("    legacy_source_payload = excluded.legacy_source_payload");
   lines.push("  returning id");
   lines.push(")");
@@ -106,8 +110,16 @@ for (const [index, row] of rows.entries()) {
   if (contactStatements.length === 0) {
     lines.push("select id from inserted_school;");
   } else {
-    lines.push("insert into public.school_contacts (school_id, role, name, phone, email, title, is_primary, created_at, updated_at)");
-    lines.push("select inserted_school.id, contact.role, contact.name, contact.phone, contact.email, contact.title, true, now(), now()");
+    lines.push(",");
+    lines.push("deleted_import_contacts as (");
+    lines.push("  delete from public.school_contacts c");
+    lines.push("  using inserted_school");
+    lines.push("  where c.school_id = inserted_school.id");
+    lines.push("    and c.notes = 'Imported from schools_rows.csv'");
+    lines.push("  returning c.id");
+    lines.push(")");
+    lines.push("insert into public.school_contacts (school_id, role, name, phone, email, title, is_primary, notes, created_at, updated_at)");
+    lines.push("select inserted_school.id, contact.role, contact.name, contact.phone, contact.email, contact.title, true, 'Imported from schools_rows.csv', now(), now()");
     lines.push("from inserted_school");
     lines.push("cross join (values");
     lines.push(contactStatements.map((contact) => {

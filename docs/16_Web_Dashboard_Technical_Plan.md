@@ -188,7 +188,7 @@ Export implementation options:
 1. Client-triggered CSV from server-side query for small datasets.
 2. `export_jobs` table and background job if exports become large.
 
-MVP can start with synchronous CSV/Excel export as long as it is manager-only and audited.
+MVP starts with synchronous manager-only school CSV export at `/api/exports/schools`, backed by `school_export_view` and `export_jobs` audit rows. Additional export types can follow the same route-handler pattern.
 
 ## User Management
 

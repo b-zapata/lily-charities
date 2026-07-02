@@ -54,7 +54,7 @@ export default async function SchoolDetailPage({
               school.contacts.map((contact) => (
                 <div key={contact.id} className="py-2 text-sm">
                   <div className="font-medium text-slate-900">{contact.name}</div>
-                  <div className="text-slate-500">{contact.role.replaceAll("_", " ")} · {contact.phone ?? "No phone"}</div>
+                  <div className="text-slate-500">{contact.role.replaceAll("_", " ")} - {contact.phone ?? "No phone"}</div>
                   {contact.email ? <div className="text-slate-400">{contact.email}</div> : null}
                 </div>
               ))

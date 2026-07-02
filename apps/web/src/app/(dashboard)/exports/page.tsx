@@ -10,32 +10,33 @@ export default function ExportsPage() {
       </div>
       <ConfigWarning />
       <section className="rounded-md border border-slate-200 bg-white p-4">
-        <div className="grid gap-3 md:grid-cols-4">
-          <select className="rounded-md border border-slate-300 px-3 py-2 text-sm">
-            <option>Schools</option>
-            <option>Assessments</option>
-            <option>Agreements</option>
-            <option>Approval history</option>
+        <form action="/api/exports/schools" method="get" className="grid gap-3 md:grid-cols-4">
+          <select name="type" className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+            <option value="schools">Schools</option>
           </select>
-          <select className="rounded-md border border-slate-300 px-3 py-2 text-sm">
-            <option>All stages</option>
-            <option>Assessed</option>
-            <option>Selected</option>
-            <option>Operational</option>
+          <select name="stage" className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+            <option value="">All stages</option>
+            <option value="identified">Identified</option>
+            <option value="assessed">Assessed</option>
+            <option value="selected">Selected</option>
+            <option value="setup_in_progress">Setup in progress</option>
+            <option value="training">Training</option>
+            <option value="operational">Operational</option>
           </select>
-          <select className="rounded-md border border-slate-300 px-3 py-2 text-sm">
-            <option>All outcomes</option>
-            <option>Selected</option>
-            <option>Future Potential</option>
-            <option>Not Selected</option>
+          <select name="outcome" className="rounded-md border border-slate-300 px-3 py-2 text-sm">
+            <option value="">All outcomes</option>
+            <option value="pending">Pending</option>
+            <option value="selected">Selected</option>
+            <option value="future_potential">Future Potential</option>
+            <option value="not_selected">Not Selected</option>
           </select>
           <button className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white">
             <Download className="h-4 w-4" />
             Export CSV
           </button>
-        </div>
+        </form>
         <p className="mt-3 text-sm text-slate-500">
-          The backend export view is ready. The download action will be wired once Supabase is connected.
+          Exports use the manager-only school export view and create an export audit row when Supabase is connected.
         </p>
       </section>
     </div>

@@ -21,6 +21,9 @@ export default async function DashboardLayout({
   if (isSupabaseConfigured() && !user) {
     redirect("/login");
   }
+  if (isSupabaseConfigured() && user && !["manager", "admin"].includes(user.role)) {
+    redirect("/login?error=manager_only");
+  }
 
   return (
     <div className="min-h-screen bg-slate-100">

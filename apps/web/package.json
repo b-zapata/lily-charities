@@ -5,7 +5,8 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "bootstrap:manager": "node scripts/bootstrap-manager-profile.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.5.2",

@@ -53,6 +53,24 @@ export default async function ApprovalDetailPage({
             <span className="text-sm font-medium text-slate-700">Manager note</span>
             <textarea name="review_notes" rows={4} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
           </label>
+          <label className="md:col-span-3">
+            <span className="text-sm font-medium text-slate-700">Applied data JSON</span>
+            <textarea
+              name="applied_data_json"
+              rows={10}
+              defaultValue={JSON.stringify(request.proposed_data ?? {}, null, 2)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
+            />
+          </label>
+          <label className="md:col-span-3">
+            <span className="text-sm font-medium text-slate-700">Component decisions JSON</span>
+            <textarea
+              name="component_decisions_json"
+              rows={4}
+              placeholder='{"school":"approved","agreement":"needs_clarification"}'
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
+            />
+          </label>
         </div>
         <button className="mt-4 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800">
           Submit decision

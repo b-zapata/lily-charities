@@ -101,6 +101,8 @@ For each nonblank CSV row:
    - Always insert principal contact because source has principal name and phone on all real rows.
    - Insert lead teacher only when any lead teacher field is present.
    - Insert local liaison only when any local liaison field is present.
+   - Mark imported contacts with `notes = Imported from schools_rows.csv`.
+   - On rerun, replace only contacts with that exact import note for the school, so the import does not duplicate historical contacts.
 
 3. Defer `school_assessments`:
    - The CSV is not the full official initial assessment.

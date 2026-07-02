@@ -59,10 +59,22 @@ Install dependencies:
 pnpm install
 ```
 
+On Windows PowerShell, use `pnpm.cmd` if script execution policy blocks the `.ps1` shims:
+
+```powershell
+pnpm.cmd install
+```
+
 Run the manager web dashboard:
 
 ```bash
 pnpm dev
+```
+
+PowerShell:
+
+```powershell
+pnpm.cmd dev
 ```
 
 Validate the local school CSV, if present:
@@ -77,4 +89,18 @@ Generate local import SQL from the ignored source CSV:
 pnpm generate:school-import
 ```
 
+Run Supabase migrations through the repo-local CLI:
+
+```bash
+pnpm supabase:db:push
+```
+
+Bootstrap the first manager profile after Supabase env vars are configured:
+
+```bash
+pnpm bootstrap:manager
+```
+
 The raw school export in `docs/source_data/schools_rows.csv` is intentionally ignored by Git because it contains sensitive school/contact data.
+
+See [Supabase setup](supabase/README.md) for hosted project setup, manager bootstrap, and import instructions.

@@ -34,7 +34,11 @@ export default async function LoginPage({
 
         {error ? (
           <div className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">
-            {error === "config" ? "Supabase is not configured." : decodeURIComponent(error)}
+            {error === "config"
+              ? "Supabase is not configured."
+              : error === "manager_only"
+                ? "The web dashboard is manager-only for the MVP."
+                : decodeURIComponent(error)}
           </div>
         ) : null}
 
