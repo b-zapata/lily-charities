@@ -12,6 +12,7 @@
     "supabase:db:push": "supabase db push",
     "validate:school-csv": "node scripts/validate-school-csv.mjs",
     "generate:school-import": "node scripts/generate-school-import-sql.mjs",
+    "generate:legacy-import": "node scripts/generate-legacy-import-sql.mjs",
     "bootstrap:manager": "pnpm --filter @lily/web bootstrap:manager"
   },
   "dependencies": {

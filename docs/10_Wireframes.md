@@ -34,16 +34,16 @@ Notes:
 +--------------------------------+
 | Schools              [Sync]    |
 | Search schools...              |
-| Filters: Stage, Outcome        |
+| Filters: Status                |
 |                                |
 | + School name                  |
 |   Address/area                 |
-|   Stage - Outcome              |
+|   Status                       |
 |   Sync/status marker           |
 |                                |
 | + School name                  |
 |   Address/area                 |
-|   Stage - Outcome              |
+|   Status                       |
 |                                |
 | [ Add School ]                 |
 +--------------------------------+
@@ -63,8 +63,7 @@ Actions:
 | < School Name                  |
 | No. SCHOOL-0020                |
 | Address                        |
-| Stage: Assessed                |
-| Outcome: Future Potential      |
+| Status: Assessed               |
 |                                |
 | Tabs/sections:                 |
 | - Overview                     |
@@ -246,7 +245,7 @@ Photo types:
 +--------------------------------+
 ```
 
-## Manager Web Dashboard
+## Web Dashboard
 
 ### Schools Table
 
@@ -254,12 +253,12 @@ Photo types:
 +----------------------------------------------------------------+
 | Schools                                   [Export] [New School] |
 | Search...                                                       |
-| Filters: Stage | Outcome | District | Missing assessment        |
+| Filters: Status | District | Missing assessment                  |
 |         Missing agreement | Pending requests                    |
 |                                                                |
-| No.         Name        District   Stage        Outcome       Updated |
-| SCHOOL-0020 Example     Dhaka      Assessed     Future Pot.   Jul 1  |
-| SCHOOL-0001 Example 2   Dhaka      Operational  Selected      Jun 28 |
+| No.         Name        District   Status       Updated              |
+| SCHOOL-0020 Example     Dhaka      Assessed     Jul 1                |
+| SCHOOL-0001 Example 2   Dhaka      Operational  Jun 28               |
 +----------------------------------------------------------------+
 ```
 
@@ -269,7 +268,7 @@ Photo types:
 +----------------------------------------------------------------+
 | SCHOOL-0020 - School Name                        [Edit] [Export]|
 | Address                                                        |
-| Stage: Assessed                  Outcome: Future Potential      |
+| Status: Assessed                                               |
 |                                                                |
 | Sections                                                       |
 | - Overview                                                     |
@@ -345,7 +344,7 @@ Photo types:
 | Reports / Export                                                |
 | Export type: Schools / Assessments / Agreements / Approvals     |
 | Filters                                                        |
-| [ Stage ] [ Outcome ] [ District ] [ Date range ]               |
+| [ Status ] [ District ] [ Date range ]                         |
 |                                                                |
 | [ Download CSV ] [ Download Excel ]                             |
 +----------------------------------------------------------------+

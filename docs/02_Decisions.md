@@ -8,7 +8,7 @@ This document records product and architecture decisions that should guide imple
 
 | ID | Decision | Rationale |
 | --- | --- | --- |
-| D001 | Build two main apps: Manager Web Dashboard and native Android app. | Managers and volunteers have different workflows, devices, and connectivity needs. |
+| D001 | Build two main apps: role-aware Web Dashboard and native Android app. | Managers/admins need a full operational dashboard, volunteers need offline Android workflows, and volunteers may also use limited web school/profile workflows. |
 | D002 | Android app is offline-first. | Volunteers in Bangladesh may not have reliable internet during school visits. |
 | D003 | Address is the primary human-readable location field when available, but it is not required for basic school creation. | Basic school creation should be very lightweight; the map pin is the required location anchor. |
 | D004 | A map pin is mandatory and required. | Lily wants every school record/submission to include precise coordinates in addition to address. The app may use device GPS to suggest the initial pin, but the user must confirm/place the map pin. |
@@ -16,7 +16,7 @@ This document records product and architecture decisions that should guide imple
 | D006 | Managers and volunteers can both initiate new school creation. | Managers can create official schools directly; volunteer-created schools require manager approval before becoming official. |
 | D007 | Volunteers submit proposed changes for approval. | Volunteer-created schools and edits require manager review before becoming official. |
 | D008 | Use change requests for approval workflow. | A single review mechanism can handle volunteer-created schools, edits, assessments, agreements, photos, and lifecycle proposals. |
-| D009 | Track pipeline stage separately from selection outcome. | A school can be assessed but marked future potential, or selected without yet being operational. |
+| D009 | Track school progress with one status field. | The MVP does not need a separate selection decision field. `not_selected` is a school status, and `future_potential` is out of scope. The current implementation uses `pipeline_stage` as the backing database field; `selection_outcome` remains only as a legacy compatibility column until it is safely dropped. |
 | D010 | Initial school assessment/checklist is MVP. | It replaces an existing paper workflow. |
 | D011 | Each school has one official initial assessment. | Later updates should edit the existing official information rather than create multiple official initial assessments. |
 | D012 | Formal long-term impact surveys are V2+. | They are important later but not required to replace the current school-selection workflow. |
@@ -34,11 +34,11 @@ This document records product and architecture decisions that should guide imple
 | D024 | Managers can edit volunteer-proposed data during review. | Managers may communicate with volunteers and correct proposed data directly before approving. |
 | D025 | Partial approval is allowed for multi-part submissions. | Managers can approve some parts of a submission and reject or request clarification on others. |
 | D026 | Basic new school creation requires only school name and map pin. | Address, contact, assessment, agreement, and photos belong to the heavier initial assessment workflow. |
-| D027 | Initial assessment submission moves the school into `assessed` / `pending`; manager selection approval moves it to `selected` / `selected`. | `assessed` means the initial assessment has been submitted and is awaiting or has received a manager decision. If the manager decision is `future_potential` or `not_selected`, the school stays in `assessed` with that outcome. |
+| D027 | Initial assessment submission moves the school to `assessed`; manager review moves it to `selected` or `not_selected`. | `assessed` means the initial assessment has been submitted and is waiting for manager review. Once reviewed, the status itself communicates the result. |
 | D028 | Volunteers can complete assessment, agreement, and photos for a newly created school before that school is manager-approved. | The app should support attaching the heavier assessment package to a local/pending school. |
 | D029 | If a manager partially approves only the school details, the school becomes official immediately. | Other components can remain rejected or needing clarification without blocking official school creation. |
 | D030 | Manager-edited proposed data does not require volunteer reconfirmation. | Managers can approve directly after correcting proposed data. |
-| D031 | Web dashboard is manager-only for MVP. | Volunteers should not access the web dashboard in the MVP. |
+| D031 | Web dashboard is available to managers/admins and limited volunteers for MVP. | Managers/admins use the full dashboard. Volunteers may access only schools and profile pages; any volunteer-created school or school edit from web must become a change request requiring manager/admin approval. |
 | D032 | Native Android app is volunteer-only for MVP. | Managers may use a mobile app later, but it is not required for MVP. |
 | D033 | The team will create the Bangla agreement translation, then Lily managers will review it. | Translation is a required content task before production agreement capture. |
 | D034 | Device GPS/current location may provide the required map pin, but a submission cannot be sent until a pin is confirmed. | If map tiles and current location are unavailable, volunteers may save a draft but cannot submit the school or assessment yet. |
@@ -49,13 +49,14 @@ This document records product and architecture decisions that should guide imple
 | D039 | MVP prioritizes function over visual polish. | The goal is operational replacement, not a polished public-facing product. |
 | D040 | Avoid collecting individual student records in MVP. | Aggregate counts are enough for the selection workflow. |
 | D041 | Required initial assessment photos are school exterior, proposed library room/space, classroom or learning environment, and agreement signature image. | Student photos are not required. These photo categories support manager review without creating unnecessary student-photo collection requirements. |
-| D042 | Volunteers may propose lifecycle stage or selection outcome changes. | Proposed lifecycle changes require manager approval like other volunteer-submitted changes. |
+| D042 | Volunteers may propose school status changes. | Proposed lifecycle/status changes require manager approval like other volunteer-submitted changes. |
 | D043 | Partial approval feedback can start as one overall manager note. | Component-level approval is required, but itemized per-field feedback can be added later if the review UI needs it. |
 | D044 | Auto-generate Lily school numbers when new schools become official, with manager override. | This preserves the existing `SCHOOL-####` convention while avoiding manual numbering work for routine approvals. |
 | D045 | Imported schools with missing or invalid map pins should not block launch. | Existing data is incomplete; import those records as official data with cleanup flags, then let managers and volunteers correct map pins over time. New school and initial assessment submissions still require a confirmed pin. |
 | D046 | Store `donor_id` on school records for MVP. | Donor workflows are not important for MVP, but the current database includes donor references and Lily may clarify their meaning later. |
 | D047 | Use the recommended MVP stack: Supabase/Postgres/Auth/Storage, Next.js/React for web, and native Kotlin/Room/WorkManager for Android. | This keeps the system lightweight, offline-capable, and implementation-friendly for the two-app MVP. |
 | D048 | Phase 1 should be docs-first technical design before implementation scaffolding. | Schema, RLS, storage, sync, import, Android local data, and web route contracts should be clear before agents start building. |
+| D049 | Sign-in should lock after 3 consecutive failed password attempts for the same email, then unlock after 15 minutes. | This adds simple account-level protection without creating a support-heavy manual unlock process. A successful sign-in resets the failed-attempt counter. |
 
 ## Open Decisions
 

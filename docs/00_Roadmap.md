@@ -13,7 +13,7 @@ Before implementation starts, the product docs should answer:
 - What the MVP includes and excludes.
 - Which decisions are settled and which are still open.
 - What data is official vs proposed.
-- How school lifecycle and selection outcome behave.
+- How school status behaves.
 - How manager approvals work.
 - How Android offline sync behaves.
 - What the key Android and web screens contain.
@@ -110,9 +110,9 @@ Exit criteria:
 - Volunteers can submit proposed data without directly changing official records.
 - RLS prevents unauthorized access and writes.
 
-## Phase 3 - Manager Web Dashboard MVP
+## Phase 3 - Web Dashboard MVP
 
-Goal: give managers the operational control center before the field app is fully rolled out.
+Goal: give managers/admins the operational control center before the field app is fully rolled out, while giving volunteers limited browser access to schools and profile.
 
 Features:
 
@@ -120,12 +120,14 @@ Features:
 - Schools table with search and filters.
 - School details.
 - Create/edit official school records.
+- Volunteer web school creation/edit proposals routed through approval requests.
 - Approval queue.
 - Assessment review.
 - Agreement review.
 - Photo review.
-- Lifecycle and selection outcome updates.
+- School status updates.
 - User management basics.
+- Profile page for all roles.
 - CSV/Excel export.
 
 Exit criteria:
@@ -133,6 +135,7 @@ Exit criteria:
 - Managers can replace spreadsheet review for MVP workflows.
 - Managers can approve/reject volunteer submissions.
 - Managers can inspect agreement evidence and generated PDFs.
+- Volunteers can use the web dashboard for schools/profile without directly changing official records.
 
 ## Phase 4 - Android Volunteer MVP
 

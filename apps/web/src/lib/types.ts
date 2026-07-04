@@ -2,15 +2,10 @@ export type PipelineStage =
   | "identified"
   | "assessed"
   | "selected"
+  | "not_selected"
   | "setup_in_progress"
   | "training"
   | "operational";
-
-export type SelectionOutcome =
-  | "pending"
-  | "selected"
-  | "future_potential"
-  | "not_selected";
 
 export type ChangeRequestStatus =
   | "draft"
@@ -33,8 +28,8 @@ export type SchoolSummary = {
   longitude: number | null;
   needs_map_pin_cleanup: boolean;
   pipeline_stage: PipelineStage;
-  selection_outcome: SelectionOutcome;
   donor_id: string | null;
+  created_source?: string;
   principal_name: string | null;
   principal_phone: string | null;
   lead_teacher_name: string | null;
@@ -55,8 +50,40 @@ export type SchoolDetail = SchoolSummary & {
     email: string | null;
     title: string | null;
   }>;
+  assessment?: Record<string, unknown> | null;
+  library_setup?: Record<string, unknown> | null;
   summary_notes?: string | null;
+  created_at?: string;
+  created_by?: string | null;
+  updated_by?: string | null;
   version?: number;
+};
+
+export type SchoolTimelineEvent = {
+  id: string;
+  label: string;
+  description: string | null;
+  occurred_at: string;
+  actor_name: string | null;
+  event_type: string;
+};
+
+export type SchoolPhoto = {
+  id: string;
+  photo_type: string;
+  caption: string | null;
+  approval_status: string;
+  created_at: string;
+  uploaded_by_name: string | null;
+  image_url: string | null;
+};
+
+export type SchoolPhotoPage = {
+  photos: SchoolPhoto[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 };
 
 export type ApprovalQueueItem = {
@@ -79,4 +106,19 @@ export type ChangeRequestDetail = ApprovalQueueItem & {
   applied_data: Record<string, unknown> | null;
   component_decisions: Record<string, unknown> | null;
   review_notes: string | null;
+};
+
+export type UserProfile = {
+  id: string;
+  display_name: string;
+  email: string;
+  phone: string | null;
+  role: "volunteer" | "manager" | "admin";
+  preferred_app_language: string | null;
+  is_active: boolean;
+  home_area: string | null;
+  notes: string | null;
+  last_seen_at: string | null;
+  created_at: string;
+  updated_at: string;
 };

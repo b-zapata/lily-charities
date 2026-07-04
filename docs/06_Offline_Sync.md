@@ -159,7 +159,7 @@ Volunteer prepares initial assessment offline
     -> required photos attached
     -> outbox mutations queued
     -> sync creates pending change request package
-    -> school is visible as assessed / pending while manager decision is pending
+    -> school is visible as assessed while manager review is pending
     -> manager reviews and may partially approve components
 ```
 

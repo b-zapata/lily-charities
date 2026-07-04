@@ -2,7 +2,7 @@
 
 Status: Phase 1 technical design draft.
 
-This document outlines the manager-only web dashboard implementation plan.
+This document outlines the role-aware web dashboard implementation plan.
 
 ## Stack
 
@@ -19,18 +19,20 @@ Recommended route structure:
 
 | Route | Purpose |
 | --- | --- |
-| `/login` | Manager login. |
-| `/schools` | Main schools table. |
-| `/schools/new` | Manager-created official school. |
-| `/schools/[id]` | School details. |
-| `/schools/[id]/edit` | Direct manager edit. |
-| `/approvals` | Approval queue. |
-| `/approvals/[id]` | Review change request. |
-| `/exports` | CSV/Excel export screen. |
-| `/users` | Basic user management. |
+| `/login` | Login for managers/admins/volunteers. |
+| `/schools` | Main schools table. Visible to all active roles. |
+| `/schools/new` | Manager/admin direct school creation; volunteer proposed new school. |
+| `/schools/[id]` | School details. Visible to all active roles for active schools. |
+| `/schools/[id]/edit` | Manager/admin direct edit; volunteer proposed school edit. |
+| `/approvals` | Approval queue. Manager/admin only. |
+| `/approvals/[id]` | Review change request. Manager/admin only. |
+| `/exports` | CSV/Excel export screen. Manager/admin only. |
+| `/users` | Basic user management. Manager/admin only. |
+| `/users/[id]` | Admin-only user profile/edit page. |
+| `/profile` | Current user's own profile. Visible to all active roles. |
 | `/settings` | Lightweight admin/settings if needed. |
 
-Web dashboard is manager-only for MVP. Volunteers should not use the web dashboard.
+Web dashboard access is role-filtered for MVP. Volunteers may use the web dashboard only for schools and profile. The nav should hide manager/admin-only sections, and route-level checks should redirect unauthorized volunteers back to `/schools`.
 
 ## Schools Table
 
@@ -43,32 +45,31 @@ Columns:
 - Bangla/English name if useful.
 - Address/area.
 - District.
-- Pipeline stage.
-- Selection outcome.
+- Status.
 - Donor ID.
-- Needs map pin cleanup.
+- Missing map pin.
 - Initial assessment status/date.
 - Agreement status.
-- Pending approvals count.
 - Last updated.
 
 Filters:
 
 - Search by school number, school name, contact, or address.
-- Pipeline stage.
-- Selection outcome.
+- Status.
 - District/area.
 - Donor ID.
 - Missing assessment.
 - Missing approved agreement.
-- Needs map pin cleanup.
+- Missing map pin.
 - Pending change requests.
 - Pending photo approvals.
+
+Pending approvals should be surfaced as a conditional badge next to the Approvals item in the left navigation for managers/admins, not as a dedicated Schools table column.
 
 Actions:
 
 - Open school details.
-- Create school.
+- Create school. Managers/admins create official records directly; volunteers submit `new_school` change requests.
 - Export filtered results.
 
 ## School Details
@@ -85,12 +86,11 @@ Sections:
 
 Actions:
 
-- Edit official school.
+- Edit official school as manager/admin, or submit a `school_edit` change request as volunteer.
 - Assign/edit school number.
 - Add or update map pin.
-- Clear map pin cleanup flag when coordinates are confirmed.
-- Update lifecycle stage.
-- Update selection outcome.
+- Highlight missing map pins automatically when coordinates are absent.
+- Update status.
 - Add manager notes.
 - View pending requests for school.
 - Export school detail if needed.
@@ -188,7 +188,7 @@ Export implementation options:
 1. Client-triggered CSV from server-side query for small datasets.
 2. `export_jobs` table and background job if exports become large.
 
-MVP starts with synchronous manager-only school CSV export at `/api/exports/schools`, backed by `school_export_view` and `export_jobs` audit rows. Additional export types can follow the same route-handler pattern.
+MVP starts with synchronous manager/admin-only school CSV export at `/api/exports/schools`, backed by `school_export_view` and `export_jobs` audit rows. Additional export types can follow the same route-handler pattern.
 
 ## User Management
 
@@ -198,12 +198,36 @@ MVP basics:
 - Set role.
 - Activate/deactivate user.
 - View last seen.
+- Admins can click a user row to view/edit full profile details and set a new password.
 
 Do not build complex permissions UI in MVP.
 
+## Profile
+
+All active web users can edit their own profile details:
+
+- Name.
+- Email.
+- Phone.
+- Preferred app language.
+- Home area.
+- Notes.
+- Password.
+
+Role and active status are read-only on self profile. Admins edit those fields from `/users/[id]`.
+
+## Login Lockout
+
+The web sign-in action should enforce a simple lockout policy:
+
+- Track failed attempts in `auth_login_attempts` by normalized email.
+- After 3 consecutive failed password attempts, lock sign-in for 15 minutes.
+- Successful sign-in resets the failed count and clears the lock.
+- The table is accessed from server actions with the Supabase service role key only.
+
 ## Implementation Notes
 
-- Use server-side auth checks for every manager route.
+- Use server-side auth checks for every role-limited route.
 - Prefer typed query helpers for views and RPC calls.
 - Keep table views dense and operational, not marketing-styled.
 - Do not expose volunteer-only draft payloads except through approval/review contexts.

@@ -6,36 +6,23 @@ This document defines how Lily Charities tracks a school from first identificati
 
 ## Core Rule
 
-Pipeline stage and selection outcome are separate fields.
+School lifecycle is tracked with one status field.
 
-Example:
+The current implementation uses the database field `pipeline_stage` as the school status. Do not build a separate user-facing selection decision field for MVP. The old `selection_outcome` field may exist in the database temporarily for compatibility, but it is not part of the active workflow.
 
-```text
-Pipeline stage: Assessed
-Selection outcome: Future Potential
-```
+## Statuses
 
-This means the school was assessed but is not currently selected for implementation.
-
-## Pipeline Stages
-
-| Stage | Meaning |
+| Status | Meaning |
 | --- | --- |
 | `identified` | School is known to Lily but has not been fully assessed. |
-| `assessed` | Initial school assessment/checklist has been submitted and is awaiting or has received a manager selection decision. |
+| `assessed` | Initial school assessment/checklist has been submitted and is waiting for manager review. |
 | `selected` | School has been selected for the project. |
+| `not_selected` | School was assessed or reviewed and is not selected for the project. |
 | `setup_in_progress` | Library setup work has started. |
 | `training` | Ambassador and/or lead teacher training is happening or scheduled. |
 | `operational` | Library is operating. |
 
-## Selection Outcomes
-
-| Outcome | Meaning |
-| --- | --- |
-| `pending` | No final selection decision yet. |
-| `selected` | School is selected for the project. |
-| `future_potential` | School may be a fit later, but not selected now. |
-| `not_selected` | School is not a fit. |
+`future_potential` is not part of the MVP status list.
 
 ## Default Values
 
@@ -43,117 +30,82 @@ New official school records should default to:
 
 ```text
 pipeline_stage = identified
-selection_outcome = pending
 ```
 
-Volunteer-created basic school proposals use the same defaults when approved.
+Volunteer-created basic school proposals use the same default when approved.
 
 When a volunteer submits the initial assessment for review, the visible lifecycle state should become:
 
 ```text
 pipeline_stage = assessed
-selection_outcome = pending
 ```
 
 The assessment data still requires manager review before becoming the official approved assessment.
 
-When a manager approves the school for selection, the school should move to:
+When a manager reviews the initial assessment:
 
-```text
-pipeline_stage = selected
-selection_outcome = selected
-```
+- Selected school: set `pipeline_stage = selected`.
+- Not selected school: set `pipeline_stage = not_selected`.
 
-If the manager decision is `future_potential` or `not_selected`, the school should remain:
-
-```text
-pipeline_stage = assessed
-selection_outcome = future_potential OR not_selected
-```
-
-## Stage Entry Expectations
+## Status Entry Expectations
 
 These are guidance rules, not all hard database constraints.
 
-| Stage | Expected Data |
+| Status | Expected Data |
 | --- | --- |
 | `identified` | School name and map pin. |
-| `assessed` | Initial school assessment submitted; manager decision may still be pending. |
-| `selected` | Manager selection decision and selection outcome set to `selected`. |
+| `assessed` | Initial school assessment submitted; manager review is pending. |
+| `selected` | Manager has selected the school for Lily's project. |
+| `not_selected` | Manager has decided not to move forward with the school. |
 | `setup_in_progress` | Setup notes or setup start date. |
 | `training` | Training scheduled or completed details. |
 | `operational` | Operational date or manager confirmation. |
 
-## Allowed Stage Transitions
+## Normal Transitions
 
 Recommended normal transitions:
 
 ```text
 identified
     -> assessed
-    -> selected
+    -> selected OR not_selected
+
+selected
     -> setup_in_progress
     -> training
     -> operational
 ```
 
-Managers should be allowed to correct stages when data cleanup requires it.
+Managers should be allowed to correct statuses when data cleanup requires it.
 
-Volunteer stage updates should be submitted as change requests.
-
-## Selection Outcome Transitions
-
-Recommended transitions:
-
-```text
-pending
-    -> selected OR future_potential OR not_selected
-```
-
-Managers may move a school back to `pending` if a decision was made in error or needs reconsideration.
-
-## Stage And Outcome Examples
-
-| Pipeline Stage | Selection Outcome | Meaning |
-| --- | --- | --- |
-| `identified` | `pending` | School is known but not assessed or selected. |
-| `assessed` | `pending` | Checklist is complete but no decision yet. |
-| `assessed` | `future_potential` | School is not selected now but may be reconsidered. |
-| `assessed` | `not_selected` | School was assessed and rejected. |
-| `selected` | `selected` | School is selected but setup has not started. |
-| `setup_in_progress` | `selected` | Selected school is being prepared. |
-| `training` | `selected` | Training is underway or scheduled. |
-| `operational` | `selected` | Library is active. |
+Volunteer status updates should be submitted as change requests.
 
 ## Manager Actions
 
 Managers can:
 
-- Set pipeline stage.
-- Set selection outcome.
+- Set school status.
 - Correct mistakes.
 - Add notes explaining status changes.
-- Review volunteer-proposed lifecycle updates.
+- Review volunteer-proposed status updates.
 
-Every official lifecycle or outcome change should create an audit event.
+Every official lifecycle/status change should create an audit event.
 
 ## Volunteer Actions
 
 Volunteers can:
 
 - Submit an initial assessment for manager review.
-- Propose lifecycle stage or selection outcome changes for manager review.
+- Propose school status changes for manager review.
 - Add notes/photos supporting a status change if the app exposes that action.
 
-Volunteers cannot directly update official stage or outcome fields.
+Volunteers cannot directly update official status fields.
 
 ## Reporting Needs
 
 Managers should be able to filter by:
 
-- Pipeline stage.
-- Selection outcome.
-- Stage plus outcome combination.
+- School status.
 - Missing assessment.
 - Missing agreement.
 - Pending approvals.
@@ -161,6 +113,6 @@ Managers should be able to filter by:
 
 ## Open Questions
 
-- Should the system enforce normal stage transitions, or only warn managers?
+- Should the system enforce normal status transitions, or only warn managers?
 - Should `training` represent scheduled training, completed training, or both?
 - Should `operational` require an operational date?

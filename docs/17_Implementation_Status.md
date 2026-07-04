@@ -1,6 +1,6 @@
 # Implementation Status
 
-Status: Backend/web checkpoint after CSS, export, import, and review-flow hardening.
+Status: Backend/web checkpoint after role-aware dashboard access, user/profile management, imports, and review-flow hardening.
 
 ## Completed
 
@@ -19,13 +19,13 @@ Added Supabase backend foundation files:
 
 The raw `docs/source_data/schools_rows.csv` file remains local-only and ignored by Git.
 
-### Phase 3 Manager Web Dashboard MVP Scaffold
+### Phase 3 Web Dashboard MVP Scaffold
 
-Added a pnpm workspace and Next.js manager dashboard app:
+Added a pnpm workspace and Next.js web dashboard app:
 
 - Login page.
 - Server-side dashboard route protection when Supabase env vars are configured.
-- Schools table with search/filter UI.
+- Schools table with search/filter UI, using one school status field.
 - School detail page.
 - Manager create school form.
 - Manager edit school form.
@@ -33,10 +33,16 @@ Added a pnpm workspace and Next.js manager dashboard app:
 - Change request review page.
 - Export screen scaffold.
 - User management table scaffold.
+- Current-user profile page.
+- Admin-only user profile drill-in page.
+- Role-aware dashboard navigation.
+- Limited volunteer web access to Schools and Profile.
 - Tailwind global CSS is wired correctly.
-- Dashboard routes enforce manager/admin role when Supabase is configured.
+- Dashboard routes enforce role access when Supabase is configured.
 - Schools CSV export route is wired to `school_export_view`.
-- Approval review lets managers edit applied JSON and component decisions before submitting.
+- Approval review now shows plain proposed changes and manager-friendly decision buttons.
+- Volunteer web school creation and school edits create change requests instead of directly updating official data.
+- Sign-in lockout table/policy added: 3 failed attempts for the same email locks sign-in for 15 minutes.
 
 The dashboard is wired to the Supabase views and RPC functions defined in the backend migrations. With no Supabase env vars, it renders safe empty states and setup warnings.
 
@@ -53,9 +59,20 @@ Added/updated helpers:
 
 Added migration `20260702000600_review_workflow_apply_data.sql`:
 
-- Pending initial assessment submission marks the school as `assessed`/`pending` while awaiting manager review.
+- Pending initial assessment submission marks the school as `assessed` while awaiting manager review.
 - Manager approval can apply `new_school`, `school_edit`, `assessment_submission`, `agreement_submission`, `photo_upload`, and `lifecycle_update` data.
 - Review decisions still write audit events.
+
+Added migration `20260703000300_login_attempt_lockout.sql`:
+
+- Creates `auth_login_attempts` for service-role-only failed login tracking.
+- Supports the web 3-attempt / 15-minute lockout policy.
+
+Added migrations `20260703000400_add_not_selected_pipeline_stage.sql` and `20260703000500_collapse_selection_decision_into_status.sql`:
+
+- Adds `not_selected` as a school status.
+- Collapses the old selection-decision workflow into the single `pipeline_stage` status field.
+- Backfills old `future_potential`/`not_selected` decision rows to `pipeline_stage = not_selected`.
 
 ## Validation Run
 
@@ -83,7 +100,7 @@ CSV validation result:
 - Supabase migrations have not been applied to a live/local Supabase instance in this environment because project credentials and a reachable Supabase/Postgres target are not available in this shell.
 - RLS/storage policies have not been tested against real Supabase auth sessions yet.
 - Generated agreement PDF implementation is still a backend job placeholder.
-- User invitation/account creation flow is scaffold-level only.
+- User invitation/account creation flow is implemented at MVP level through Supabase Admin API, but still needs real-session testing.
 - Android app implementation has not started.
 
 ## Next Recommended Steps

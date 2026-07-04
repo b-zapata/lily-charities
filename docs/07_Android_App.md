@@ -64,7 +64,7 @@ The Schools screen should show all active approved schools cached for offline us
 Features:
 
 - Search by school name, Lily school number, and address.
-- Filter by stage and selection outcome.
+- Filter by school status.
 - Show sync/status markers.
 - Open School Details.
 - Add New School.

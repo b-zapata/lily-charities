@@ -109,7 +109,7 @@ Required payload categories:
 Server behavior:
 
 - Create pending change request.
-- Mark school visible as `pipeline_stage = assessed` and `selection_outcome = pending` when appropriate.
+- Mark school visible as `pipeline_stage = assessed` when appropriate.
 - Official assessment record is created/updated only after manager approval.
 
 ### `agreement_submission`
@@ -146,13 +146,13 @@ Photo file upload flow:
 
 ### `lifecycle_update`
 
-Creates a pending request to change `pipeline_stage` and/or `selection_outcome`.
+Creates a pending request to change school status (`pipeline_stage`).
 
 Required:
 
 - School ID.
 - Base version.
-- Proposed stage and/or outcome.
+- Proposed status.
 - Optional note.
 
 Manager approval applies the official lifecycle change and creates an audit event.
@@ -244,5 +244,5 @@ Use user-initiated sync for large photo batches or when background upload reliab
 
 - RPC functions must validate role and active profile server-side.
 - Never trust client-provided `submitted_by`; derive it from `auth.uid()`.
-- Never trust manager-only fields from Android payloads.
+- Never trust manager/admin-only fields from Android or volunteer-web payloads.
 - Validate all required fields server-side even if Android already validates them.

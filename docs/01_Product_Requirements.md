@@ -17,7 +17,7 @@ Lily Charities currently relies on paper forms, manual review, and spreadsheets.
 - Paper forms and photos are easy to lose or delay.
 - Managers must manually review and reconcile updates.
 - There is no single trusted source of school truth.
-- Lifecycle status and selection outcome can become mixed together.
+- School status can become unclear or inconsistent across spreadsheets.
 
 ## Product Goals
 
@@ -27,7 +27,7 @@ Lily Charities currently relies on paper forms, manual review, and spreadsheets.
 - Digitize school agreement capture.
 - Allow volunteers to propose new schools and edits.
 - Require manager approval before volunteer submissions become official.
-- Track school lifecycle stage separately from selection outcome.
+- Track school lifecycle with one school status field.
 - Support school photos and agreement evidence.
 - Export operational data to CSV/Excel.
 
@@ -51,7 +51,7 @@ Important clarification: the initial school assessment/checklist is in MVP. Form
 
 ### Volunteer
 
-Primary app: Native Android.
+Primary app: Native Android. Secondary/limited app: Web dashboard.
 
 For MVP, the native Android app is volunteer-only. Managers may use a mobile app later, but that should not block the MVP.
 
@@ -59,6 +59,7 @@ Volunteers in Bangladesh need to:
 
 - Log in.
 - View all active approved school records offline.
+- View schools and their own profile in the web dashboard when using a browser.
 - Add a new school.
 - Complete the initial school assessment/checklist.
 - Capture app-native school agreement evidence.
@@ -73,7 +74,7 @@ Volunteers do not directly overwrite official school records.
 
 Primary app: Web dashboard.
 
-For MVP, the web dashboard is manager-only.
+For MVP, managers use the web dashboard as the full operational control center. Volunteers may also access the web dashboard, but only the schools and profile pages. Volunteer school creation and edits from the web dashboard must still become approval requests, not direct official writes.
 
 Managers need to:
 
@@ -81,7 +82,7 @@ Managers need to:
 - Review volunteer submissions.
 - Approve, reject, or request clarification.
 - Track school lifecycle.
-- Track selection outcome.
+- Track selected and not-selected schools as statuses.
 - Review assessments.
 - Review agreements.
 - Review photos.
@@ -111,6 +112,7 @@ This does not need to be a large separate product surface in MVP.
 - Manager role.
 - Optional admin role.
 - Active/inactive user status.
+- 3 consecutive failed password attempts for the same email should trigger a 15-minute temporary sign-in lockout.
 
 ### School Database
 
@@ -121,7 +123,7 @@ This does not need to be a large separate product surface in MVP.
 - School contacts.
 - Principal and lead teacher contacts.
 - Lifecycle stage.
-- Selection outcome.
+- School status.
 - Notes and metadata.
 
 ### Initial School Assessment
@@ -216,6 +218,7 @@ Student photos are not required for initial assessment. School seal/stamp photo 
 
 - Schools table.
 - School details.
+- Volunteer-limited school viewing, school proposal, school edit proposal, and profile pages.
 - Approval queue.
 - Assessment review.
 - Agreement review.
@@ -238,7 +241,7 @@ The MVP is successful if:
 - Volunteers can collect field data offline and sync later.
 - Managers can review and approve volunteer submissions.
 - Lily has a trusted official school database.
-- School lifecycle and selection outcome are clearly tracked.
+- School lifecycle status is clearly tracked.
 - The initial school assessment is captured digitally.
 - School agreement evidence is captured digitally.
 - Managers can export data without relying on manual spreadsheet reconciliation.

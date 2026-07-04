@@ -30,8 +30,8 @@ Create Postgres enums for stable workflow values:
 | Enum | Values |
 | --- | --- |
 | `user_role` | `volunteer`, `manager`, `admin` |
-| `pipeline_stage` | `identified`, `assessed`, `selected`, `setup_in_progress`, `training`, `operational` |
-| `selection_outcome` | `pending`, `selected`, `future_potential`, `not_selected` |
+| `pipeline_stage` | `identified`, `assessed`, `selected`, `not_selected`, `setup_in_progress`, `training`, `operational` |
+| `selection_outcome` | Legacy compatibility only: `pending`, `selected`, `not_selected`. Do not expose in MVP UI. |
 | `change_request_type` | `new_school`, `school_edit`, `assessment_submission`, `agreement_submission`, `photo_upload`, `lifecycle_update` |
 | `change_request_status` | `draft`, `pending_review`, `needs_clarification`, `approved`, `partially_approved`, `rejected`, `cancelled` |
 | `photo_type` | `school_exterior`, `classroom`, `library_space`, `bookshelf`, `students`, `agreement_signature`, `school_seal`, `paper_agreement`, `training`, `other` |
@@ -107,6 +107,27 @@ Indexes:
 - Index on `role`.
 - Index on `is_active`.
 
+### `auth_login_attempts`
+
+Service-role-only table for web sign-in lockout tracking. This is not a credential store; Supabase Auth remains the credential source of truth.
+
+| Column | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `email` | `text` | yes | Primary key; normalized lowercase email. |
+| `failed_count` | `integer` | yes | Consecutive failed password attempts. |
+| `locked_until` | `timestamptz` | no | Future timestamp blocks sign-in. |
+| `last_failed_at` | `timestamptz` | no | Most recent failed attempt. |
+| `last_success_at` | `timestamptz` | no | Most recent successful sign-in. |
+| `created_at` | `timestamptz` | yes | Default `now()`. |
+| `updated_at` | `timestamptz` | yes | Maintained by trigger. |
+
+Policy:
+
+- Enable RLS.
+- Do not grant client-facing select/insert/update/delete policies.
+- Web server actions should access this table only with the Supabase service role key.
+- Lock after 3 consecutive failed attempts for the same email; unlock automatically after 15 minutes; reset on successful sign-in.
+
 ### `schools`
 
 Official manager-owned school record.
@@ -132,11 +153,11 @@ Official manager-owned school record.
 | `map_pin_source` | `text` | no | `manual`, `device_gps_suggested`, `typed_coordinates`, `import_missing`. |
 | `gps_accuracy_meters` | `numeric` | no | Optional GPS metadata. |
 | `gps_captured_at` | `timestamptz` | no | Optional GPS metadata. |
-| `pipeline_stage` | `pipeline_stage` | yes | Default `identified`. |
-| `selection_outcome` | `selection_outcome` | yes | Default `pending`. |
+| `pipeline_stage` | `pipeline_stage` | yes | Default `identified`. User-facing label: Status. |
+| `selection_outcome` | `selection_outcome` | yes | Legacy compatibility field. Default `pending`; do not expose in MVP UI. |
 | `donor_id` | `text` | no | Current CSV donor reference. |
 | `is_active` | `boolean` | yes | Default `true`. |
-| `needs_map_pin_cleanup` | `boolean` | yes | Default `false`. |
+| `needs_map_pin_cleanup` | `boolean` | yes | Legacy/import cleanup metadata. Do not expose as a user-editable field. UI should derive missing map pin state from null latitude/longitude. |
 | `data_quality_flags` | `jsonb` | no | Import cleanup flags. |
 | `summary_notes` | `text` | no | Manager-owned notes. |
 | `created_source` | `text` | yes | `import`, `manager`, `approved_change_request`. |
@@ -153,12 +174,12 @@ Constraints:
 - Latitude between `-90` and `90` when present.
 - Longitude between `-180` and `180` when present.
 - For non-import records, latitude and longitude must be present.
-- Imported records may have null latitude/longitude only when `needs_map_pin_cleanup = true`.
+- Imported records may have null latitude/longitude. Treat missing map pin as a derived state from null latitude/longitude; `needs_map_pin_cleanup` is legacy/import metadata only.
 
 Indexes:
 
 - Unique index on `school_number`.
-- B-tree indexes on `pipeline_stage`, `selection_outcome`, `is_active`, `needs_map_pin_cleanup`, `donor_id`.
+- B-tree indexes on `pipeline_stage`, `is_active`, `needs_map_pin_cleanup`, `donor_id`.
 - Trigram indexes on `name`, `name_english`, `name_bangla`, and `address`.
 
 ### `school_contacts`
@@ -424,12 +445,14 @@ Indexes:
 Server-side validation should enforce:
 
 - Volunteers cannot submit a new school without `name`, `latitude`, and `longitude`.
+- Volunteer web submissions for new schools and school edits must create `change_requests`, not direct official writes.
 - Volunteers cannot submit an initial assessment without address, principal/contact name, contact phone, completed assessment payload, agreement payload/signature, and required photos.
 - Required initial assessment photos: school exterior, proposed library room/space, classroom or learning environment, agreement signature image.
 - Student photos are optional.
 - Rejections require `review_notes`.
 - Manager approval of a new school must assign a unique `school_number`.
 - Imported schools may have missing coordinates only with `created_source = 'import'` and `needs_map_pin_cleanup = true`.
+- Web sign-in should lock for 15 minutes after 3 consecutive failed password attempts for the same email.
 
 ## Migration Order
 
@@ -437,11 +460,12 @@ Server-side validation should enforce:
 2. Enums.
 3. Helper functions and triggers.
 4. `profiles`.
-5. `schools`.
-6. Child official tables: contacts, assessments, grade counts, agreements, library setups.
-7. `photos`.
-8. Workflow/support tables: change requests, comments, audit events, devices, sync batches, exports.
-9. Indexes.
-10. RLS policies.
-11. Storage buckets and storage policies.
-12. Seed/import scripts.
+5. `auth_login_attempts`.
+6. `schools`.
+7. Child official tables: contacts, assessments, grade counts, agreements, library setups.
+8. `photos`.
+9. Workflow/support tables: change requests, comments, audit events, devices, sync batches, exports.
+10. Indexes.
+11. RLS policies.
+12. Storage buckets and storage policies.
+13. Seed/import scripts.

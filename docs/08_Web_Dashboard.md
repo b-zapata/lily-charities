@@ -2,11 +2,11 @@
 
 Status: Draft dashboard specification.
 
-Primary user: Manager.
+Primary users: managers/admins, with limited volunteer access.
 
-The web dashboard is the manager control center for official school data, approval review, lifecycle tracking, and exports.
+The web dashboard is the manager/admin control center for official school data, approval review, lifecycle tracking, users, and exports. Volunteers may also use the web dashboard for a limited browser workflow: schools and profile only.
 
-For MVP, the web dashboard is manager-only. Volunteers should use the native Android app, not the web dashboard.
+For MVP, volunteer web access is intentionally narrow. Volunteers can view active official schools, create proposed new schools, propose edits to existing schools, and manage their own profile. Volunteer web submissions must become change requests and require manager/admin approval before official data changes.
 
 ## Core Principles
 
@@ -17,17 +17,20 @@ For MVP, the web dashboard is manager-only. Volunteers should use the native And
 - Tables should be dense, searchable, and exportable.
 - Workflow clarity matters more than visual polish.
 - Agreement and photo evidence should be easy to inspect.
+- Route-level access should hide and block manager/admin-only pages from volunteers.
 
 ## Planned Screens
 
 - Login.
 - Schools.
 - School Details.
+- School Create/Edit for volunteers as approval-request submissions.
 - Approval Queue.
 - Change Request Review.
 - Agreement Review.
 - Photo Review.
 - User Management.
+- Profile.
 - Reports / Exports.
 
 ## Schools Table
@@ -40,22 +43,19 @@ Columns:
 - School name.
 - Address/area.
 - District.
-- Pipeline stage.
-- Selection outcome.
+- Status.
 - Initial assessment date.
 - Agreement status.
-- Pending approvals count.
 - Last updated.
 
 Filters:
 
 - Search by school number, school name, contact, or address.
-- Pipeline stage.
-- Selection outcome.
+- Status.
 - District/area.
 - Missing assessment.
 - Missing approved agreement.
-- Needs map pin cleanup.
+- Missing map pin.
 - Pending change requests.
 - Pending agreement submissions.
 - Pending photo approvals.
@@ -63,7 +63,7 @@ Filters:
 Actions:
 
 - Open school details.
-- Create school.
+- Create school. Managers/admins create official records directly; volunteers submit proposed schools for approval.
 - Export filtered results.
 
 ## School Details
@@ -81,11 +81,10 @@ Sections:
 
 Actions:
 
-- Edit official school.
+- Edit official school as manager/admin, or submit a proposed edit as volunteer.
 - Assign or edit Lily school number.
-- Clear map pin cleanup flag after confirming coordinates.
-- Update lifecycle stage.
-- Update selection outcome.
+- Add or update map pin. Schools with no coordinates should be highlighted automatically as missing a pin.
+- Update status.
 - Add manager notes.
 - View pending requests for school.
 - Export school detail if needed.
@@ -201,6 +200,8 @@ MVP basics:
 - Set role.
 - Activate/deactivate user.
 - View last seen/sync metadata if available.
+- Admins can open a user row/profile and edit profile fields, role, active status, and password.
+- Managers can manage volunteer/manager accounts but cannot manage admin accounts.
 
 Roles:
 
@@ -224,6 +225,40 @@ Recommended exports:
 
 Export filters should match the Schools table and relevant review pages.
 
+Exports are manager/admin-only for MVP.
+
+## Profile
+
+All web users can access their own profile page.
+
+Editable self-service fields:
+
+- Name.
+- Email.
+- Phone.
+- Preferred app language.
+- Home area.
+- Notes.
+- Password.
+
+Role and active status are visible but not self-editable.
+
+## Volunteer Web Access
+
+Volunteers should only see these left-nav items:
+
+- Schools.
+- Profile.
+
+Volunteers must not see or access:
+
+- Approval Queue.
+- Change Request Review.
+- Exports.
+- User Management.
+
+If a volunteer manually navigates to a manager/admin-only route, the app should redirect them back to Schools.
+
 ## Dashboard Metrics
 
 Small, useful counts:
@@ -241,4 +276,3 @@ Avoid advanced analytics in MVP.
 
 - Should agreement PDF generation happen automatically or on demand?
 - Should exports be generated instantly or recorded as export jobs?
-- Should user management be manager-only or admin-only?

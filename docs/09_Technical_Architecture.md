@@ -116,16 +116,15 @@ See `06_Offline_Sync.md` and `07_Android_App.md`.
 
 ## Web Responsibilities
 
-For MVP, the web dashboard is manager-only.
+For MVP, the web dashboard has role-filtered access:
 
-- Manager dashboard.
-- Schools table and school details.
-- Approval queue.
-- Agreement review.
-- Photo review.
-- User management basics.
-- CSV/Excel export.
-- Generated agreement PDF viewing/downloading.
+- Managers/admins get the full operational dashboard.
+- Volunteers get limited web access to Schools and Profile only.
+- Volunteer-created schools and edits from the web dashboard must become `change_requests`, not direct writes to official tables.
+- Manager/admin dashboard: schools table and details, direct official edits, approval queue, agreement review, photo review, user management, CSV/Excel export, and generated agreement PDF viewing/downloading.
+- Volunteer dashboard: schools table/details, proposed new school, proposed school edits, and self profile management.
+
+The left navigation and route-level checks should both enforce these boundaries.
 
 See `08_Web_Dashboard.md`.
 

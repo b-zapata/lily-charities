@@ -6,8 +6,8 @@ Volunteers submit proposed data. Managers decide whether it becomes official.
 
 ```text
 Volunteer creates or edits data
-    -> saved locally on Android
-    -> synced as pending change request
+    -> saved locally on Android, or submitted through the limited volunteer web dashboard
+    -> synced/submitted as pending change request
     -> manager reviews
     -> approve / reject / needs clarification
     -> official database updated only if approved
@@ -34,7 +34,7 @@ Volunteer creates or edits data
 | `assessment_submission` | Volunteer submits the initial school assessment/checklist. |
 | `agreement_submission` | Volunteer submits app-native school agreement data and evidence. |
 | `photo_upload` | Volunteer submits photos for manager review. |
-| `lifecycle_update` | Volunteer proposes stage or selection outcome changes. |
+| `lifecycle_update` | Volunteer proposes school status changes. |
 
 ## Statuses
 
@@ -108,11 +108,11 @@ Manager review should show:
 When approved:
 
 - Create or update official `school_assessments`.
-- If the manager selects the school, set `pipeline_stage = selected` and `selection_outcome = selected`.
-- If the manager chooses `future_potential` or `not_selected`, keep `pipeline_stage = assessed` and set the selected outcome.
+- If the manager selects the school, set `pipeline_stage = selected`.
+- If the manager does not select the school, set `pipeline_stage = not_selected`.
 - Create audit event.
 
-While the initial assessment is pending manager decision, the school should be visible as `pipeline_stage = assessed` and `selection_outcome = pending`.
+While the initial assessment is pending manager decision, the school should be visible as `pipeline_stage = assessed`.
 
 ## Agreement Submission Review
 

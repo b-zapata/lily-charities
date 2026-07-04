@@ -44,7 +44,6 @@ This document outlines the Android Room schema and offline sync responsibilities
 - `longitude`.
 - `needs_map_pin_cleanup`.
 - `pipeline_stage`.
-- `selection_outcome`.
 - `donor_id`.
 - `is_active`.
 - `version`.
@@ -248,7 +247,7 @@ Lifecycle proposal:
 
 - School ID.
 - Base version.
-- Proposed stage and/or outcome.
+- Proposed status.
 
 ## WorkManager Jobs
 
@@ -275,7 +274,7 @@ When local edit base version differs from server version:
 Schools list:
 
 - Search by school name, school number, and address.
-- Show stage/outcome.
+- Show status.
 - Show sync markers.
 - Show map-pin cleanup indicator if helpful.
 

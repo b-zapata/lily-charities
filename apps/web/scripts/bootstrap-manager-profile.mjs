@@ -35,11 +35,17 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const managerEmail = process.env.MANAGER_EMAIL;
 const managerPassword = process.env.MANAGER_PASSWORD;
 const managerName = process.env.MANAGER_NAME;
+const managerRole = process.env.MANAGER_ROLE || "manager";
 
 if (!supabaseUrl || !serviceRoleKey || !managerEmail) {
   console.error(
     "Missing required env. Set NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and MANAGER_EMAIL."
   );
+  process.exit(1);
+}
+
+if (!["manager", "admin"].includes(managerRole)) {
+  console.error("MANAGER_ROLE must be manager or admin.");
   process.exit(1);
 }
 
@@ -98,10 +104,10 @@ const { error: profileError } = await supabase.from("profiles").upsert({
   id: user.id,
   display_name: managerName || user.user_metadata?.display_name || user.email || managerEmail,
   email: user.email || managerEmail,
-  role: "manager",
+  role: managerRole,
   is_active: true
 });
 
 if (profileError) throw profileError;
 
-console.log(`Manager profile ready for ${managerEmail}.`);
+console.log(`${managerRole} profile ready for ${managerEmail}.`);

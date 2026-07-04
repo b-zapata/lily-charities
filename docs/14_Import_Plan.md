@@ -83,7 +83,6 @@ For each nonblank CSV row:
    - `address = address`.
    - `country = Bangladesh`.
    - `pipeline_stage = identified`.
-   - `selection_outcome = pending`.
    - `donor_id = nullif(trim(donor_id), '')`.
    - `is_active = true`.
    - `latitude = null`.

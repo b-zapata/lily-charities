@@ -8,7 +8,7 @@ This document describes the intended Supabase Row-Level Security and Storage acc
 
 Roles live in `profiles.role`:
 
-- `volunteer`: Android field user.
+- `volunteer`: Android field user with limited web dashboard access to schools/profile.
 - `manager`: Web dashboard user.
 - `admin`: Technical or system admin.
 
@@ -30,11 +30,12 @@ Avoid duplicating role lookup logic in every policy.
 | Table | Volunteer | Manager | Admin |
 | --- | --- | --- | --- |
 | `profiles` | Read own profile. Update limited own preferences only. | Read active users. Manage volunteer basics if needed. | Full management. |
+| `auth_login_attempts` | No direct access. | No direct access. | No direct client access; service-role server actions only. |
 | `schools` | Read active official schools. No direct insert/update/delete. | Read/create/update/archive official schools. | Same as manager plus admin cleanup. |
 | `school_contacts` | Read contacts for active official schools. No direct mutation. | Create/update/archive contacts. | Full management. |
 | `school_assessments` | Read approved assessments for active schools. No direct mutation. | Create/update via approval workflow or direct manager edit. | Full management. |
 | `assessment_grade_counts` | Read via assessment access. No direct mutation. | Mutate with assessment. | Full management. |
-| `school_agreements` | Read approved agreement status/metadata for active schools. Generated PDFs may be manager-only if desired. | Read/create/update after approval; download PDFs. | Full management. |
+| `school_agreements` | Read approved agreement status/metadata for active schools. Generated PDFs may be manager/admin-only if desired. | Read/create/update after approval; download PDFs. | Full management. |
 | `library_setups` | Read setup status for active schools. No direct mutation. | Create/update setup/training/operational milestones. | Full management. |
 | `photos` | Read approved photos for active schools; read own pending/rejected uploads. Insert own pending metadata through controlled sync. | Read/review all photos. | Full management. |
 | `change_requests` | Insert own requests. Read own requests and statuses. Update own drafts or resubmissions before review if allowed. | Read/review/update all requests. | Full management. |
@@ -58,6 +59,8 @@ Volunteers must never directly update official records:
 - `library_setups`
 
 Volunteer work enters the system through `change_requests`, pending `photos`, and sync support tables.
+
+This applies to both Android and the limited volunteer web dashboard. Volunteer-created schools and volunteer school edits from the web dashboard must create `change_requests`.
 
 ### Managers
 
@@ -84,7 +87,7 @@ Rejected photos should remain hidden from official galleries but visible in the 
 
 Create read-optimized views for app and dashboard use:
 
-- `active_school_summary_view`: active school list with school number, name, address, stage, outcome, pending request count, agreement status, and map-pin cleanup flag.
+- `active_school_summary_view`: active school list with school number, name, address, status, pending request count, agreement status, and a derived missing-map-pin flag.
 - `school_detail_view`: official school with primary contacts and setup summary.
 - `manager_approval_queue_view`: pending/clarification requests with submitter and school display fields.
 - `school_export_view`: flattened school/contact/setup fields for CSV/Excel export.
@@ -144,6 +147,18 @@ Admins:
 
 - Full storage access for maintenance.
 
+## Auth Lockout Table
+
+`auth_login_attempts` is used by server-side sign-in code to enforce temporary lockouts after repeated failed password attempts.
+
+Rules:
+
+- RLS enabled.
+- No client-facing policies.
+- Access only through trusted server actions using the Supabase service role key.
+- Lock after 3 consecutive failed attempts for one normalized email.
+- Unlock automatically after 15 minutes or reset immediately after successful sign-in.
+
 ## Server-Side Storage Operations
 
 Approval should be server-controlled:
@@ -163,7 +178,7 @@ Create `audit_events` for:
 
 - Manager direct school edits.
 - Manager approval/rejection/partial approval.
-- Lifecycle stage or outcome changes.
+- School status changes.
 - Agreement approval and PDF generation.
 - Import completion.
 - Map pin cleanup completion.

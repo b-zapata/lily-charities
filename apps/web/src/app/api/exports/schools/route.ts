@@ -4,9 +4,8 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const columns: Array<[string, string]> = [
   ["school_number", "School Number"],
-  ["name", "School Name"],
-  ["name_english", "English Name"],
-  ["name_bangla", "Bangla Name"],
+  ["name_english", "School Name in English"],
+  ["name_bangla", "School Name in Bangla"],
   ["address", "Address"],
   ["area", "Area"],
   ["city", "City"],
@@ -16,9 +15,11 @@ const columns: Array<[string, string]> = [
   ["latitude", "Latitude"],
   ["longitude", "Longitude"],
   ["needs_map_pin_cleanup", "Needs Map Pin Cleanup"],
-  ["pipeline_stage", "Pipeline Stage"],
-  ["selection_outcome", "Selection Outcome"],
+  ["pipeline_stage", "Status"],
   ["donor_id", "Donor ID"],
+  ["donor_name", "Donor Name"],
+  ["donor_organization", "Donor Organization"],
+  ["donor_anonymous", "Donor Anonymous"],
   ["principal_name", "Principal Name"],
   ["principal_phone", "Principal Phone"],
   ["principal_email", "Principal Email"],
@@ -63,7 +64,6 @@ export async function GET(request: NextRequest) {
 
   const url = new URL(request.url);
   const stage = url.searchParams.get("stage")?.trim();
-  const outcome = url.searchParams.get("outcome")?.trim();
   const cleanup = url.searchParams.get("cleanup")?.trim();
 
   let query = supabase
@@ -72,8 +72,7 @@ export async function GET(request: NextRequest) {
     .order("school_number", { ascending: true });
 
   if (stage) query = query.eq("pipeline_stage", stage);
-  if (outcome) query = query.eq("selection_outcome", outcome);
-  if (cleanup === "true") query = query.eq("needs_map_pin_cleanup", true);
+  if (cleanup === "true") query = query.or("needs_map_pin_cleanup.eq.true,latitude.is.null,longitude.is.null");
 
   const { data, error } = await query;
   if (error) {
@@ -85,7 +84,6 @@ export async function GET(request: NextRequest) {
     export_type: "schools_csv",
     filters: {
       stage: stage || null,
-      outcome: outcome || null,
       cleanup: cleanup || null
     },
     status: "completed",

@@ -26,7 +26,7 @@ export default async function LoginPage({
           </div>
           <div>
             <h1 className="text-lg font-semibold text-slate-950">Lily Operations</h1>
-            <p className="text-sm text-slate-500">Manager dashboard</p>
+            <p className="text-sm text-slate-500">Operations dashboard</p>
           </div>
         </div>
 
@@ -37,8 +37,10 @@ export default async function LoginPage({
             {error === "config"
               ? "Supabase is not configured."
               : error === "manager_only"
-                ? "The web dashboard is manager-only for the MVP."
-                : decodeURIComponent(error)}
+                ? "You do not have access to that dashboard page."
+                : error === "inactive"
+                  ? "This account is inactive. Contact an administrator."
+                  : decodeURIComponent(error)}
           </div>
         ) : null}
 

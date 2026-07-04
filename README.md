@@ -6,7 +6,7 @@ The MVP replaces the current paper-and-Excel workflow for school identification,
 
 ## Planned Apps
 
-- Manager Web Dashboard for Rabin, Lauri, and other managers. Web is manager-only for MVP.
+- Web Dashboard for managers/admins and limited volunteer access. Managers/admins manage official data, approvals, users, and exports; volunteers can view schools/profile and submit proposed school changes for approval.
 - Native Android App for volunteers in Bangladesh. Android is volunteer-only for MVP.
 
 ## MVP Principles
@@ -16,7 +16,7 @@ The MVP replaces the current paper-and-Excel workflow for school identification,
 - Volunteers submit proposed changes for approval.
 - Preserve Lily school numbers, such as `SCHOOL-0020`, separately from internal IDs.
 - Address is the human-readable location when available; map pin is required.
-- Pipeline stage and selection outcome are separate.
+- School status is a single field; `not_selected` is a status.
 - Initial school assessment is MVP.
 - App-native school agreement capture is MVP.
 - Long-term impact surveys are V2+.
@@ -49,7 +49,7 @@ Source planning data is stored in [docs/source_data](docs/source_data).
 
 ## Current Status
 
-Phase 1 technical design is in progress. The current docs translate the product model into Supabase/PostgreSQL schema, RLS policies, storage policies, sync contracts, import planning, Android local data, and web dashboard implementation contracts.
+Backend foundation and the web dashboard MVP are in active implementation. The docs translate the product model into Supabase/PostgreSQL schema, RLS policies, storage policies, sync contracts, import planning, Android local data, and web dashboard implementation contracts.
 
 ## Development
 

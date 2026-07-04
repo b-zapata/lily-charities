@@ -1,10 +1,14 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ConfigWarning } from "@/components/config-warning";
 import { EmptyState } from "@/components/empty-state";
 import { StatusBadge } from "@/components/status-badge";
-import { getApprovalQueue } from "@/lib/data";
+import { getApprovalQueue, getCurrentUser } from "@/lib/data";
 
 export default async function ApprovalsPage() {
+  const user = await getCurrentUser();
+  if (!user || !["manager", "admin"].includes(user.role)) redirect("/schools");
+
   const approvals = await getApprovalQueue();
 
   return (

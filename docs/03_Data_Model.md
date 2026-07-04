@@ -12,8 +12,8 @@ The model is intentionally written as a product/data specification first, not fi
 - Allow volunteers to collect data offline without directly overwriting official records.
 - Preserve the current school selection checklist as structured data.
 - Preserve Lily's existing school numbers, such as `SCHOOL-0020`, as manager-visible identifiers.
-- Support school lifecycle tracking from identification through operational library status.
-- Track selection outcome independently from lifecycle stage.
+- Support school status tracking from identification through operational library status.
+- Use one school status field for MVP; `not_selected` is a status, and `future_potential` is out of scope.
 - Support photos, signed agreements, manager review, audit history, and CSV/Excel export.
 - Keep the MVP focused on replacing paper forms and spreadsheets.
 
@@ -112,7 +112,7 @@ Volunteer app action
 | Entity | Purpose | MVP |
 | --- | --- | --- |
 | `profiles` | App user profiles and roles linked to Supabase Auth users. | Yes |
-| `schools` | Official school records and current lifecycle/selection status. | Yes |
+| `schools` | Official school records and current status. | Yes |
 | `school_contacts` | Principals, lead teachers, signatories, and other school contacts. | Yes |
 | `school_assessments` | Approved initial school selection checklist submissions. | Yes |
 | `assessment_grade_counts` | Grade-level student counts from the checklist. | Yes |
@@ -122,6 +122,7 @@ Volunteer app action
 | `change_requests` | Pending, approved, rejected, or cancelled volunteer submissions. | Yes |
 | `change_request_comments` | Manager and submitter discussion on a request. | Maybe |
 | `audit_events` | Immutable history of approvals and official data changes. | Yes |
+| `auth_login_attempts` | Service-role-only sign-in lockout tracking by email. | Yes |
 | `export_jobs` | Optional record of CSV/Excel exports. | Maybe |
 | `mobile_devices` | Optional registered Android devices for sync diagnostics. | Maybe |
 | `sync_batches` | Optional server-side sync attempt tracking. | Maybe |
@@ -155,7 +156,7 @@ Recommended conventions:
 
 | Value | Meaning |
 | --- | --- |
-| `volunteer` | Android app user who can view approved schools and submit change requests. |
+| `volunteer` | Field user who can view approved schools and submit change requests from Android or limited web dashboard access. |
 | `manager` | Web dashboard user who can review, approve, reject, edit, and export. |
 | `admin` | Optional technical/admin role for user and system administration. |
 
@@ -163,25 +164,25 @@ MVP requires `volunteer` and `manager`. `admin` may be useful early for setup ev
 
 ### `pipeline_stage`
 
+User-facing label: Status.
+
+For MVP, this is the single school status field. The name remains `pipeline_stage` in the current database for migration safety.
+
 | Value | Meaning |
 | --- | --- |
 | `identified` | School is known but not yet fully assessed. |
-| `assessed` | Initial assessment has been submitted and is awaiting or has received a manager decision. |
+| `assessed` | Initial assessment has been submitted and is waiting for manager review. |
 | `selected` | School has been selected for the project. |
+| `not_selected` | School was reviewed and is not selected for the project. |
 | `setup_in_progress` | Library setup work has started. |
 | `training` | Ambassador/lead teacher training is happening or scheduled. |
 | `operational` | Library is operating. |
 
 ### `selection_outcome`
 
-| Value | Meaning |
-| --- | --- |
-| `pending` | No final selection decision yet. |
-| `selected` | School is selected for the project. |
-| `future_potential` | School may be a fit later, but not selected now. |
-| `not_selected` | School is not a fit. |
+Legacy compatibility field only.
 
-Important: `pipeline_stage` and `selection_outcome` are independent. Example: a school can have `pipeline_stage = assessed` and `selection_outcome = future_potential`.
+`selection_outcome` may still exist in the database while old migrations and legacy data are cleaned up, but new UI and product workflows should not expose it. Do not add `future_potential` to new flows.
 
 ### `change_request_type`
 
@@ -192,7 +193,7 @@ Important: `pipeline_stage` and `selection_outcome` are independent. Example: a 
 | `assessment_submission` | Volunteer submits the initial school selection checklist. |
 | `photo_upload` | Volunteer submits one or more photos for review. |
 | `agreement_submission` | Volunteer submits an app-native school agreement with signature evidence. |
-| `lifecycle_update` | Volunteer proposes a stage or selection outcome change. |
+| `lifecycle_update` | Volunteer proposes a school status change. |
 
 ### `change_request_status`
 
@@ -274,6 +275,30 @@ Supabase Auth should own authentication credentials. `profiles` owns application
 - A profile can upload many `photos`.
 - A profile can create many `audit_events` as actor.
 
+## `auth_login_attempts`
+
+Service-role-only table used by the web dashboard sign-in flow to enforce temporary lockouts.
+
+Supabase Auth owns credentials. This table does not store passwords or password hashes; it only stores failed-attempt counters and lockout timestamps for normalized email addresses.
+
+### Fields
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `email` | Text | Yes | Primary key; normalized lowercase email. |
+| `failed_count` | Integer | Yes | Consecutive failed sign-in attempts. |
+| `locked_until` | Timestamp | No | If in the future, sign-in is temporarily blocked. |
+| `last_failed_at` | Timestamp | No | Last failed attempt. |
+| `last_success_at` | Timestamp | No | Last successful sign-in, used when resetting counters. |
+| `created_at` | Timestamp | Yes | UTC. |
+| `updated_at` | Timestamp | Yes | UTC. |
+
+### MVP policy
+
+- Three consecutive failed password attempts for the same email locks sign-in for 15 minutes.
+- A successful sign-in resets `failed_count` and clears `locked_until`.
+- The table should have RLS enabled and no client policies; web server actions should access it only through the Supabase service role client.
+
 ## `schools`
 
 The official school record. This is the main manager-owned database.
@@ -303,8 +328,8 @@ Pending volunteer-created schools do not appear here until approved.
 | `map_pin_source` | Text | No | Example: `manual`, `device_gps_suggested`, `typed_coordinates`. |
 | `gps_accuracy_meters` | Decimal | No | Optional device GPS accuracy if device GPS suggested the initial pin. |
 | `gps_captured_at` | Timestamp | No | When device GPS suggestion was captured. |
-| `pipeline_stage` | `pipeline_stage` | Yes | Current lifecycle stage. |
-| `selection_outcome` | `selection_outcome` | Yes | Separate from stage. |
+| `pipeline_stage` | `pipeline_stage` | Yes | Current school status. |
+| `selection_outcome` | `selection_outcome` | Yes | Legacy compatibility field only. Do not expose in MVP UI. |
 | `donor_id` | Text | No | Current/legacy donor reference, such as `DONOR-0002`. Store for MVP even if donor workflows are deferred. |
 | `is_active` | Boolean | Yes | Active vs archived in app. |
 | `needs_map_pin_cleanup` | Boolean | Yes | True for imported records missing confirmed coordinates. Defaults false for new records. |
@@ -327,7 +352,7 @@ Pending volunteer-created schools do not appear here until approved.
 - Device GPS may suggest the initial pin location, but the user must confirm or place the map pin.
 - If neither map placement nor current-location capture is available, the app may save a draft but cannot submit it.
 - `pipeline_stage` should default to `identified`.
-- `selection_outcome` should default to `pending`.
+- `selection_outcome` may default to `pending` internally until the legacy field is removed.
 - `school_number` is not required in volunteer local drafts, but should exist on official school records.
 - Managers may edit official school records directly in the web dashboard.
 - Volunteer edits to this table should only happen through approved `change_requests`.
@@ -695,8 +720,7 @@ For `new_school`:
     "latitude": 23.8103,
     "longitude": 90.4125,
     "map_pin_source": "device_gps_suggested",
-    "pipeline_stage": "identified",
-    "selection_outcome": "pending"
+    "pipeline_stage": "identified"
   },
   "contacts": [],
   "assessment": {},
@@ -764,16 +788,16 @@ For `agreement_submission`:
 
 ### Approval behavior
 
-Submitting an initial assessment for manager review should move the school to `pipeline_stage = assessed` and keep `selection_outcome = pending` while the manager decision is pending. The submitted assessment data itself remains pending until manager review.
+Submitting an initial assessment for manager review should move the school to `pipeline_stage = assessed` while manager review is pending. The submitted assessment data itself remains pending until manager review.
 
 When a manager approves:
 
 - `new_school` creates a row in `schools`, plus related contacts/assessment/photos if included.
 - `school_edit` updates only approved official fields.
-- `assessment_submission` creates or updates `school_assessments`. If the manager selects the school, it sets `pipeline_stage = selected` and `selection_outcome = selected`. If the decision is `future_potential` or `not_selected`, the school remains in `assessed` with the chosen outcome.
+- `assessment_submission` creates or updates `school_assessments`. If the manager selects the school, it sets `pipeline_stage = selected`. If the manager does not select the school, it sets `pipeline_stage = not_selected`.
 - `photo_upload` marks photos as approved and associates them with the official entity.
 - `agreement_submission` creates or updates `school_agreements` and may trigger PDF generation.
-- `lifecycle_update` updates `schools.pipeline_stage` and/or `schools.selection_outcome`.
+- `lifecycle_update` updates `schools.pipeline_stage`.
 - Multi-part submissions may be partially approved with component-level decisions.
 - Component-level partial approval is required for multi-part submissions; itemized per-field feedback is optional for MVP. A single manager review note is acceptable.
 - Managers may edit proposed data before approval; `applied_data` should preserve the manager-edited version.
@@ -826,7 +850,7 @@ Suggested values:
 - `change_request_approved`
 - `change_request_rejected`
 - `lifecycle_changed`
-- `selection_outcome_changed`
+- `school_status_changed`
 - `export_created`
 - `user_deactivated`
 
@@ -848,7 +872,7 @@ Suggested values:
 
 ## `export_jobs`
 
-Optional table for tracking CSV/Excel exports from the manager dashboard.
+Optional table for tracking CSV/Excel exports from the web dashboard.
 
 For small MVP exports, the app can generate files directly without storing export history. If Lily wants accountability around exports, use this table.
 
@@ -981,14 +1005,13 @@ Recommended approach:
 
 For MVP, conflict handling can be manager-mediated rather than automatic merging.
 
-## Manager Dashboard Data Needs
+## Web Dashboard Data Needs
 
 The web dashboard needs to query:
 
 - All schools.
 - Schools by `school_number`.
-- Schools filtered by `pipeline_stage`.
-- Schools filtered by `selection_outcome`.
+- Schools filtered by status (`pipeline_stage`).
 - Schools missing an assessment.
 - Schools missing a signed agreement.
 - Schools with pending agreement submissions.
@@ -998,6 +1021,8 @@ The web dashboard needs to query:
 - Assessment checklist fields for review and export.
 - Contacts, lead teacher, and principal information.
 - Library setup/training milestones.
+
+Managers/admins can access the full dashboard data set. Volunteers should only see active official schools and their own profile in the web dashboard. Any volunteer school creation or school edit from web must be stored as a `change_requests` row until approved.
 
 ## Export Model
 
@@ -1020,10 +1045,9 @@ Recommended columns:
 - Country
 - Latitude
 - Longitude
-- Pipeline stage
-- Selection outcome
+- School status
 - Donor ID
-- Needs map pin cleanup
+- Missing map pin, derived from empty latitude/longitude; not user-editable
 - Principal name
 - Principal contact
 - Lead teacher name
@@ -1168,7 +1192,7 @@ Can:
 - Create and edit official school records.
 - Review pending change requests.
 - Approve/reject volunteer submissions.
-- Update lifecycle stage and selection outcome.
+- Update school status.
 - Manage photos and agreements.
 - View generated agreement PDFs and original signature/seal evidence.
 - Export CSV/Excel.
@@ -1197,6 +1221,7 @@ Recommended MVP server tables:
 8. `photos`
 9. `change_requests`
 10. `audit_events`
+11. `auth_login_attempts`
 
 Recommended optional MVP tables:
 
