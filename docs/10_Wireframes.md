@@ -68,7 +68,12 @@ Actions:
 | Tabs/sections:                 |
 | - Overview                     |
 | - Contacts                     |
-| - Assessment                   |
+| - Visit summary                |
+| - Location eligibility         |
+| - Library readiness            |
+| - School support               |
+| - Student population           |
+| - Project fit                  |
 | - Agreement                    |
 | - Photos                       |
 |                                |
@@ -273,7 +278,12 @@ Photo types:
 | Sections                                                       |
 | - Overview                                                     |
 | - Contacts                                                     |
-| - Assessment                                                   |
+| - Visit summary                                                |
+| - Location eligibility                                         |
+| - Library readiness                                            |
+| - School support                                               |
+| - Student population                                           |
+| - Project fit                                                  |
 | - Agreement                                                    |
 | - Photos                                                       |
 | - Change history                                               |

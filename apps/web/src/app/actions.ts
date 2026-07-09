@@ -2,12 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import type { AssessmentField } from "@/lib/assessment-fields";
 
 type SupabaseServerClient = NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>;
 type UserRole = "volunteer" | "manager" | "admin";
 
 const contactRoles = ["principal", "lead_teacher", "local_liaison"] as const;
+const assessmentFields = assessmentSections.flatMap((section) => section.fields);
 const maxFailedLoginAttempts = 3;
 const loginLockoutMinutes = 15;
 
@@ -117,6 +120,60 @@ function legacySelectionOutcomeForStatus(status: string) {
   if (["selected", "setup_in_progress", "training", "operational"].includes(status)) return "selected";
   if (status === "not_selected") return "not_selected";
   return "pending";
+}
+
+function optionalBoolean(formData: FormData, key: string) {
+  const value = String(formData.get(key) ?? "").trim();
+  if (!value) return null;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  throw new Error(`${key} must be yes or no`);
+}
+
+function optionalNumber(formData: FormData, key: string) {
+  const value = optionalString(formData, key);
+  if (value === null) return null;
+
+  const numberValue = Number(value);
+  if (!Number.isInteger(numberValue) || numberValue < 0) {
+    throw new Error(`${key} must be a whole number zero or greater`);
+  }
+
+  return numberValue;
+}
+
+function readAssessmentField(formData: FormData, field: AssessmentField) {
+  const key = `assessment_${field.key}`;
+  if (field.type === "boolean") return optionalBoolean(formData, key);
+  if (field.type === "number") return optionalNumber(formData, key);
+  return optionalString(formData, key);
+}
+
+function readAssessmentPayload(formData: FormData) {
+  const assessment: Record<string, string | boolean | number | null> = {};
+  let hasAnyValue = false;
+
+  for (const field of assessmentFields) {
+    const value = readAssessmentField(formData, field);
+    assessment[field.key] = value;
+    if (value !== null) hasAnyValue = true;
+  }
+
+  const gradeCounts = assessmentGradeCountFields.map((grade) => {
+    const studentCount = optionalNumber(formData, `assessment_grade_count_${grade.key}`);
+    if (studentCount !== null) hasAnyValue = true;
+
+    return {
+      grade_label: grade.key,
+      student_count: studentCount
+    };
+  });
+
+  return {
+    assessment,
+    gradeCounts,
+    hasAnyValue
+  };
 }
 
 export async function signIn(formData: FormData) {
@@ -546,6 +603,7 @@ export async function updateSchool(formData: FormData) {
 
   if (error) throw new Error(error.message);
   await updateSchoolContacts(supabase, formData, id, actor.id);
+  await updateSchoolAssessment(supabase, formData, id, actor.id);
 
   await supabase.from("audit_events").insert({
     actor_id: actor.id,
@@ -561,6 +619,82 @@ export async function updateSchool(formData: FormData) {
   revalidatePath("/schools");
   revalidatePath(`/schools/${id}`);
   redirect(`/schools/${id}`);
+}
+
+async function updateSchoolAssessment(
+  supabase: SupabaseServerClient,
+  formData: FormData,
+  schoolId: string,
+  actorId: string
+) {
+  const assessmentPayload = readAssessmentPayload(formData);
+
+  const { data: existingAssessment, error: existingError } = await supabase
+    .from("school_assessments")
+    .select("id")
+    .eq("school_id", schoolId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (existingError) throw new Error(existingError.message);
+  if (!assessmentPayload.hasAnyValue && !existingAssessment) return null;
+
+  const rawFormData = {
+    ...assessmentPayload.assessment,
+    grade_counts: assessmentPayload.gradeCounts
+  };
+
+  const assessmentPatch = {
+    ...assessmentPayload.assessment,
+    raw_form_data: rawFormData,
+    updated_by: actorId,
+    deleted_at: null
+  };
+
+  const assessmentResult = existingAssessment
+    ? await supabase
+      .from("school_assessments")
+      .update(assessmentPatch)
+      .eq("id", existingAssessment.id)
+      .select("id")
+      .single()
+    : await supabase
+      .from("school_assessments")
+      .insert({
+        school_id: schoolId,
+        form_version: "school_selection_checklist_v1",
+        prepared_by_user_id: actorId,
+        created_by: actorId,
+        ...assessmentPatch
+      })
+      .select("id")
+      .single();
+
+  if (assessmentResult.error) throw new Error(assessmentResult.error.message);
+
+  const gradeRows = assessmentPayload.gradeCounts.map((grade) => ({
+    assessment_id: assessmentResult.data.id,
+    grade_label: grade.grade_label,
+    student_count: grade.student_count
+  }));
+
+  const { error: gradeError } = await supabase
+    .from("assessment_grade_counts")
+    .upsert(gradeRows, { onConflict: "assessment_id,grade_label" });
+
+  if (gradeError) throw new Error(gradeError.message);
+
+  await supabase.from("audit_events").insert({
+    actor_id: actorId,
+    event_type: "school_assessment_updated",
+    entity_type: "school_assessment",
+    entity_id: assessmentResult.data.id,
+    school_id: schoolId,
+    after_data: rawFormData,
+    metadata: { source: "manager_dashboard" }
+  });
+
+  return assessmentResult.data;
 }
 
 async function updateSchoolContacts(

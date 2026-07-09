@@ -41,6 +41,8 @@ Added a pnpm workspace and Next.js web dashboard app:
 - Dashboard routes enforce role access when Supabase is configured.
 - Schools CSV export route is wired to `school_export_view`.
 - Approval review now shows plain proposed changes and manager-friendly decision buttons.
+- School details show approved checklist data under operational sections instead of a generic Assessment section.
+- Manager/admin school edits can backfill or correct initial assessment checklist fields for legacy schools.
 - Volunteer web school creation and school edits create change requests instead of directly updating official data.
 - Sign-in lockout table/policy added: 3 failed attempts for the same email locks sign-in for 15 minutes.
 
@@ -73,6 +75,11 @@ Added migrations `20260703000400_add_not_selected_pipeline_stage.sql` and `20260
 - Adds `not_selected` as a school status.
 - Collapses the old selection-decision workflow into the single `pipeline_stage` status field.
 - Backfills old `future_potential`/`not_selected` decision rows to `pipeline_stage = not_selected`.
+
+Added migration `20260703000600_school_visit_findings_detail.sql`:
+
+- Adds grade-count data to `school_detail_view`.
+- Syncs grade counts from approved assessment submissions into `assessment_grade_counts`.
 
 ## Validation Run
 

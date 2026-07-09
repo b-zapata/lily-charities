@@ -73,7 +73,12 @@ Sections:
 - Overview.
 - Lily school number.
 - Contacts.
-- Assessment.
+- Visit summary.
+- Location eligibility.
+- Library readiness.
+- School support.
+- Student population.
+- Project fit.
 - Agreement.
 - Library setup.
 - Photos.
@@ -82,6 +87,7 @@ Sections:
 Actions:
 
 - Edit official school as manager/admin, or submit a proposed edit as volunteer.
+- Backfill or correct initial assessment checklist fields as manager/admin.
 - Assign or edit Lily school number.
 - Add or update map pin. Schools with no coordinates should be highlighted automatically as missing a pin.
 - Update status.

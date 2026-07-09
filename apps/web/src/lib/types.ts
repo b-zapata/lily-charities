@@ -51,6 +51,10 @@ export type SchoolDetail = SchoolSummary & {
     title: string | null;
   }>;
   assessment?: Record<string, unknown> | null;
+  assessment_grade_counts?: Array<{
+    grade_label: string;
+    student_count: number | null;
+  }>;
   library_setup?: Record<string, unknown> | null;
   summary_notes?: string | null;
   created_at?: string;

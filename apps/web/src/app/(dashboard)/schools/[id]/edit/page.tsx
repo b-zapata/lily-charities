@@ -2,7 +2,9 @@ import Link from "next/link";
 import { ArrowLeft, MapPin, Save } from "lucide-react";
 import { updateSchool } from "@/app/actions";
 import { MapPinPicker } from "@/components/map-pin-picker";
+import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
 import { getCurrentUser, getSchool } from "@/lib/data";
+import type { AssessmentField } from "@/lib/assessment-fields";
 
 const pipelineOptions = [
   { value: "identified", label: "Identified" },
@@ -28,6 +30,8 @@ export default async function EditSchoolPage({
   const leadTeacher = school.contacts?.find((contact) => contact.role === "lead_teacher");
   const localLiaison = school.contacts?.find((contact) => contact.role === "local_liaison");
   const hasMapPin = school.latitude !== null && school.longitude !== null;
+  const assessment = asRecord(school.assessment);
+  const gradeCounts = getGradeCountMap(school.assessment_grade_counts, assessment);
 
   return (
     <div className="max-w-5xl space-y-4">
@@ -115,6 +119,29 @@ export default async function EditSchoolPage({
           <ContactRow title="Local liaison" prefix="local_liaison" contact={localLiaison} />
         </FormSection>
 
+        {!isVolunteer ? (
+          <FormSection
+            title="School visit checklist"
+            description="Backfill or correct the initial assessment checklist for legacy schools and manager-entered records."
+            className="space-y-5"
+            borderTop
+          >
+            {assessmentSections.map((section) => (
+              <div key={section.title} className="rounded-md border border-slate-200 p-4">
+                <h3 className="text-sm font-semibold text-slate-950">{section.title}</h3>
+                <div className="mt-3 grid gap-4 md:grid-cols-2">
+                  {section.fields.map((field) => (
+                    <AssessmentInput key={field.key} field={field} value={assessment[field.key]} />
+                  ))}
+                  {section.title === "Student Population" ? (
+                    <GradeCountInputs gradeCounts={gradeCounts} />
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </FormSection>
+        ) : null}
+
         <div className="border-t border-slate-200 bg-slate-50 px-4 py-3">
           <button className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800">
             <Save className="h-4 w-4" />
@@ -122,6 +149,76 @@ export default async function EditSchoolPage({
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function AssessmentInput({ field, value }: { field: AssessmentField; value: unknown }) {
+  const name = `assessment_${field.key}`;
+
+  if (field.type === "boolean") {
+    return (
+      <label className={field.full ? "md:col-span-2" : ""}>
+        <span className="text-sm font-medium text-slate-700">{field.label}</span>
+        <select
+          name={name}
+          defaultValue={booleanInputValue(value)}
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+        >
+          <option value="">No data to show</option>
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </label>
+    );
+  }
+
+  if (field.type === "textarea") {
+    return (
+      <label className={field.full ? "md:col-span-2" : ""}>
+        <span className="text-sm font-medium text-slate-700">{field.label}</span>
+        <textarea
+          name={name}
+          defaultValue={stringInputValue(value)}
+          rows={3}
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+        />
+      </label>
+    );
+  }
+
+  return (
+    <label className={field.full ? "md:col-span-2" : ""}>
+      <span className="text-sm font-medium text-slate-700">{field.label}</span>
+      <input
+        name={name}
+        type={field.type === "date" || field.type === "number" ? field.type : "text"}
+        min={field.type === "number" ? 0 : undefined}
+        defaultValue={field.type === "date" ? dateInputValue(value) : stringInputValue(value)}
+        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+      />
+    </label>
+  );
+}
+
+function GradeCountInputs({ gradeCounts }: { gradeCounts: Map<string, number | null> }) {
+  return (
+    <div className="md:col-span-2">
+      <div className="text-sm font-medium text-slate-700">Students by grade</div>
+      <div className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {assessmentGradeCountFields.map((grade) => (
+          <label key={grade.key}>
+            <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{grade.label}</span>
+            <input
+              name={`assessment_grade_count_${grade.key}`}
+              type="number"
+              min={0}
+              defaultValue={gradeCounts.get(grade.key) ?? ""}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+            />
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
@@ -148,6 +245,60 @@ function FormSection({
       <div className={className}>{children}</div>
     </section>
   );
+}
+
+function asRecord(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {} as Record<string, unknown>;
+  return value as Record<string, unknown>;
+}
+
+function stringInputValue(value: unknown) {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  return "";
+}
+
+function dateInputValue(value: unknown) {
+  if (typeof value !== "string") return "";
+  return value.slice(0, 10);
+}
+
+function booleanInputValue(value: unknown) {
+  if (typeof value !== "boolean") return "";
+  return value ? "true" : "false";
+}
+
+function getGradeCountMap(
+  gradeCounts: Array<{ grade_label: string; student_count: number | null }> | undefined,
+  assessment: Record<string, unknown>
+) {
+  const counts = new Map<string, number | null>();
+
+  for (const grade of gradeCounts ?? []) {
+    counts.set(grade.grade_label, grade.student_count);
+  }
+
+  if (counts.size > 0) return counts;
+
+  const rawFormData = asRecord(assessment.raw_form_data);
+  const rawGradeCounts = Array.isArray(rawFormData.grade_counts) ? rawFormData.grade_counts : [];
+  for (const item of rawGradeCounts) {
+    const grade = asRecord(item);
+    const label = typeof grade.grade_label === "string" ? grade.grade_label : null;
+    if (!label) continue;
+    counts.set(label, parseNumber(grade.student_count));
+  }
+
+  return counts;
+}
+
+function parseNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function ContactRow({

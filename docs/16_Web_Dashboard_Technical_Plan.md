@@ -78,7 +78,12 @@ Sections:
 
 - Overview.
 - Contacts.
-- Assessment.
+- Visit summary.
+- Location eligibility.
+- Library readiness.
+- School support.
+- Student population.
+- Project fit.
 - Agreement.
 - Library setup.
 - Photos.
@@ -87,6 +92,7 @@ Sections:
 Actions:
 
 - Edit official school as manager/admin, or submit a `school_edit` change request as volunteer.
+- Backfill or correct `school_assessments` and `assessment_grade_counts` fields as manager/admin.
 - Assign/edit school number.
 - Add or update map pin.
 - Highlight missing map pins automatically when coordinates are absent.

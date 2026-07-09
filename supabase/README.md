@@ -159,5 +159,6 @@ The generated SQL imports donors into `public.donors` and legacy photo metadata 
 9. `20260703000300_login_attempt_lockout.sql`
 10. `20260703000400_add_not_selected_pipeline_stage.sql`
 11. `20260703000500_collapse_selection_decision_into_status.sql`
+12. `20260703000600_school_visit_findings_detail.sql`
 
 The migrations are written to be readable first. If Supabase CLI reports a policy or function issue, fix the migration rather than patching production manually.

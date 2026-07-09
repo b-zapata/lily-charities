@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { CalendarClock, Edit, ImageIcon, MapPin } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
+import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
 import { getSchool, getSchoolPhotos, getSchoolTimeline } from "@/lib/data";
-import type { SchoolPhotoPage, SchoolTimelineEvent } from "@/lib/types";
+import type { AssessmentField } from "@/lib/assessment-fields";
+import type { SchoolDetail, SchoolPhotoPage, SchoolTimelineEvent } from "@/lib/types";
 
 export default async function SchoolDetailPage({
   params,
@@ -92,6 +94,8 @@ export default async function SchoolDetailPage({
         </div>
       </section>
 
+      <SchoolVisitFindings school={school} />
+
       <PhotoSection photos={photos} />
 
       <TimelineSection timeline={timeline} />
@@ -108,11 +112,78 @@ function Metric({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function Info({ label, value }: { label: string; value: string | null | undefined }) {
+function Info({
+  label,
+  value,
+  emptyText = "Missing",
+  className
+}: {
+  label: string;
+  value: string | null | undefined;
+  emptyText?: string;
+  className?: string;
+}) {
   return (
-    <div>
+    <div className={className}>
       <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="mt-1 text-slate-900">{value || "Missing"}</dd>
+      <dd className="mt-1 text-slate-900">{value || emptyText}</dd>
+    </div>
+  );
+}
+
+function SchoolVisitFindings({ school }: { school: SchoolDetail }) {
+  const assessment = asRecord(school.assessment);
+  const gradeCounts = getGradeCounts(school);
+
+  return (
+    <section className="grid gap-4 lg:grid-cols-2" aria-label="School visit checklist data">
+      {assessmentSections.map((section) => (
+        <VisitCard key={section.title} title={section.title}>
+          {section.fields.map((field) => (
+            <Info
+              key={field.key}
+              label={field.label}
+              value={formatAssessmentValue(assessment[field.key], field)}
+              emptyText="No data to show"
+              className={field.full ? "sm:col-span-2" : undefined}
+            />
+          ))}
+          {section.title === "Student Population" ? <GradeCountsTable gradeCounts={gradeCounts} /> : null}
+        </VisitCard>
+      ))}
+    </section>
+  );
+}
+
+function VisitCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-md border border-slate-200 bg-white p-4">
+      <h2 className="font-semibold text-slate-950">{title}</h2>
+      <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">{children}</dl>
+    </section>
+  );
+}
+
+function GradeCountsTable({ gradeCounts }: { gradeCounts: Array<{ grade_label: string; student_count: number | null }> }) {
+  const gradeCountMap = new Map(gradeCounts.map((grade) => [grade.grade_label, grade.student_count]));
+
+  return (
+    <div className="sm:col-span-2">
+      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Students by grade</div>
+      <div className="mt-2 overflow-hidden rounded-md border border-slate-200">
+        <table className="w-full text-left text-xs">
+          <tbody className="divide-y divide-slate-100">
+            {assessmentGradeCountFields.map((grade) => (
+              <tr key={grade.key}>
+                <th className="bg-slate-50 px-2 py-1.5 font-medium text-slate-700">{grade.label}</th>
+                <td className="px-2 py-1.5 text-slate-900">
+                  {gradeCountMap.get(grade.key) ?? "No data to show"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -236,4 +307,73 @@ function formatDateTime(value: string) {
     hour: "numeric",
     minute: "2-digit"
   }).format(new Date(value));
+}
+
+function formatDateValue(value: unknown) {
+  const date = stringValue(value);
+  if (!date) return null;
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  }).format(new Date(date));
+}
+
+function formatBoolean(value: unknown) {
+  if (typeof value !== "boolean") return null;
+  return value ? "Yes" : "No";
+}
+
+function formatAssessmentValue(value: unknown, field: AssessmentField) {
+  if (field.type === "boolean") return formatBoolean(value);
+  if (field.type === "date") return formatDateValue(value);
+  if (field.type === "number") return numberValue(value);
+  return stringValue(value);
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function numberValue(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? value.trim() : null;
+  }
+  return null;
+}
+
+function asRecord(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {} as Record<string, unknown>;
+  return value as Record<string, unknown>;
+}
+
+function getGradeCounts(school: SchoolDetail) {
+  if (school.assessment_grade_counts && school.assessment_grade_counts.length > 0) {
+    return school.assessment_grade_counts;
+  }
+
+  const assessment = asRecord(school.assessment);
+  const rawFormData = asRecord(assessment.raw_form_data);
+  const rawGradeCounts = Array.isArray(rawFormData.grade_counts) ? rawFormData.grade_counts : [];
+
+  return rawGradeCounts.flatMap((item) => {
+    const grade = asRecord(item);
+    const gradeLabel = stringValue(grade.grade_label);
+    if (!gradeLabel) return [];
+    return [{
+      grade_label: gradeLabel,
+      student_count: parseNumber(grade.student_count)
+    }];
+  });
+}
+
+function parseNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
