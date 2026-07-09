@@ -33,7 +33,7 @@ export default async function SchoolDetailPage({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-sm font-medium text-emerald-700">{school.school_number}</div>
+          <div className="text-sm font-medium text-red-700">{school.school_number}</div>
           <h1 className="text-xl font-semibold text-slate-950">{school.name_english ?? school.name}</h1>
           {school.name_bangla ? <p className="text-sm text-slate-700">{school.name_bangla}</p> : null}
           <p className="text-sm text-slate-500">{school.address ?? "No address"}</p>
@@ -54,7 +54,7 @@ export default async function SchoolDetailPage({
       </section>
 
       {query.submitted === "edit" ? (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
           School edit proposal submitted for manager approval.
         </div>
       ) : null}
@@ -284,7 +284,7 @@ function TimelineSection({ timeline }: { timeline: SchoolTimelineEvent[] }) {
       ) : (
         <ol className="mt-4 space-y-4">
           {timeline.map((event) => (
-            <li key={event.id} className="grid gap-1 border-l-2 border-emerald-200 pl-3 text-sm">
+            <li key={event.id} className="grid gap-1 border-l-2 border-red-200 pl-3 text-sm">
               <div className="font-medium text-slate-950">{event.label}</div>
               <div className="text-slate-500">
                 {formatDateTime(event.occurred_at)}

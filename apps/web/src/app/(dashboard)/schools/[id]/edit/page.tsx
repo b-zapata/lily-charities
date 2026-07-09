@@ -143,7 +143,7 @@ export default async function EditSchoolPage({
         ) : null}
 
         <div className="border-t border-slate-200 bg-slate-50 px-4 py-3">
-          <button className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+          <button className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800">
             <Save className="h-4 w-4" />
             {isVolunteer ? "Submit for approval" : "Save changes"}
           </button>
@@ -163,7 +163,7 @@ function AssessmentInput({ field, value }: { field: AssessmentField; value: unkn
         <select
           name={name}
           defaultValue={booleanInputValue(value)}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
         >
           <option value="">No data to show</option>
           <option value="true">Yes</option>
@@ -181,7 +181,7 @@ function AssessmentInput({ field, value }: { field: AssessmentField; value: unkn
           name={name}
           defaultValue={stringInputValue(value)}
           rows={3}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
         />
       </label>
     );
@@ -195,7 +195,7 @@ function AssessmentInput({ field, value }: { field: AssessmentField; value: unkn
         type={field.type === "date" || field.type === "number" ? field.type : "text"}
         min={field.type === "number" ? 0 : undefined}
         defaultValue={field.type === "date" ? dateInputValue(value) : stringInputValue(value)}
-        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
       />
     </label>
   );
@@ -214,7 +214,7 @@ function GradeCountInputs({ gradeCounts }: { gradeCounts: Map<string, number | n
               type="number"
               min={0}
               defaultValue={gradeCounts.get(grade.key) ?? ""}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
             />
           </label>
         ))}
@@ -343,7 +343,7 @@ function SelectField({
       <select
         name={name}
         defaultValue={defaultValue}
-        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -378,7 +378,7 @@ function Field({
         name={name}
         required={required}
         defaultValue={defaultValue ?? ""}
-        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
       />
     </label>
   );

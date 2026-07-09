@@ -74,11 +74,11 @@ export function ApprovalDecisionForm({ requestId, requestType }: ApprovalDecisio
           rows={4}
           required={isDenyingChanges}
           placeholder={isDenyingChanges ? "Tell the volunteer what needs to change." : "Optional note for the volunteer or internal record."}
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-100"
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-100"
         />
       </label>
 
-      <button className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+      <button className="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800">
         Submit decision
       </button>
     </form>
@@ -101,7 +101,7 @@ function DecisionOption({
   onChange: () => void;
 }) {
   return (
-    <label className={`cursor-pointer rounded-md border p-3 ${checked ? "border-emerald-600 bg-emerald-50" : "border-slate-200 bg-white"}`}>
+    <label className={`cursor-pointer rounded-md border p-3 ${checked ? "border-red-600 bg-red-50" : "border-slate-200 bg-white"}`}>
       <div className="flex items-start gap-3">
         <input
           type="radio"
@@ -109,7 +109,7 @@ function DecisionOption({
           value={value}
           checked={checked}
           onChange={onChange}
-          className="mt-1 h-4 w-4 border-slate-300 text-emerald-700 focus:ring-emerald-600"
+          className="mt-1 h-4 w-4 border-slate-300 text-red-700 focus:ring-red-600"
         />
         <div>
           <div className="font-medium text-slate-950">{title}</div>

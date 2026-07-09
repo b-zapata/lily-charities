@@ -27,7 +27,7 @@ export default async function NewSchoolPage() {
         <Field label="Donor ID" name="donor_id" />
         <MapPinPicker required addressInputName="address" />
         <div className="md:col-span-2">
-          <button className="rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+          <button className="rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800">
             {isVolunteer ? "Submit for approval" : "Create school"}
           </button>
         </div>
@@ -59,7 +59,7 @@ function Field({
         name={name}
         required={required}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
       />
     </label>
   );

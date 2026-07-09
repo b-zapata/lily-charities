@@ -37,7 +37,7 @@ export default async function ProfilePage({
       <ConfigWarning />
 
       {params.updated ? (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
           {params.updated === "password" ? "Password updated." : "Profile updated."}
         </div>
       ) : null}
@@ -56,7 +56,7 @@ export default async function ProfilePage({
             <select
               name="preferred_app_language"
               defaultValue={profile.preferred_app_language ?? ""}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
             >
               <option value="">No preference</option>
               <option value="en">English</option>
@@ -70,11 +70,11 @@ export default async function ProfilePage({
               name="notes"
               rows={4}
               defaultValue={profile.notes ?? ""}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
             />
           </label>
           <div className="md:col-span-2">
-            <button className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800">
+            <button className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800">
               <Save className="h-4 w-4" />
               Save profile
             </button>
@@ -138,7 +138,7 @@ function Field({
         type={type}
         required={required}
         defaultValue={defaultValue ?? ""}
-        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
       />
     </label>
   );

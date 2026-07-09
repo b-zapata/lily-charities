@@ -21,7 +21,7 @@ export function SchoolTableRows({ schools }: { schools: SchoolSummary[] }) {
             tabIndex={0}
             role="link"
             aria-label={`Open ${school.school_number} ${school.name}`}
-            className="cursor-pointer hover:bg-slate-50 focus:bg-emerald-50 focus:outline-none"
+            className="cursor-pointer hover:bg-slate-50 focus:bg-red-50 focus:outline-none"
             onClick={() => router.push(href)}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {

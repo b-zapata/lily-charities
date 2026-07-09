@@ -21,7 +21,7 @@ export default async function LoginPage({
     <main className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <section className="w-full max-w-sm rounded-md border border-slate-200 bg-white p-6 shadow-sm">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-700 text-white">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-red-700 text-white">
             <BookOpen className="h-5 w-5" />
           </div>
           <div>
@@ -51,7 +51,7 @@ export default async function LoginPage({
               name="email"
               type="email"
               required
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
             />
           </label>
           <label className="block">
@@ -60,12 +60,12 @@ export default async function LoginPage({
               name="password"
               type="password"
               required
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-700"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
             />
           </label>
           <button
             type="submit"
-            className="w-full rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+            className="w-full rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
           >
             Sign in
           </button>

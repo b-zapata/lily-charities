@@ -249,7 +249,7 @@ export function MapPinPicker({
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1">
-          <MapPin className="h-3.5 w-3.5 text-emerald-700" />
+          <MapPin className="h-3.5 w-3.5 text-red-700" />
           {latitude !== null && longitude !== null
             ? `Selected: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
             : isGeocoding

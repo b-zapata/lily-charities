@@ -29,7 +29,7 @@ export default async function ExportsPage() {
             <option value="training">Training</option>
             <option value="operational">Operational</option>
           </select>
-          <button className="inline-flex items-center justify-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white">
+          <button className="inline-flex items-center justify-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white">
             <Download className="h-4 w-4" />
             Export CSV
           </button>

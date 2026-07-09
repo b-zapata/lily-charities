@@ -31,7 +31,7 @@ export default async function SchoolsPage({
         </div>
         <Link
           href="/schools/new"
-          className="inline-flex items-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+          className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
         >
           <Plus className="h-4 w-4" />
           New School
@@ -40,7 +40,7 @@ export default async function SchoolsPage({
 
       <ConfigWarning />
       {params.submitted === "new_school" ? (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
           New school proposal submitted for manager approval.
         </div>
       ) : null}
@@ -52,7 +52,7 @@ export default async function SchoolsPage({
             name="q"
             defaultValue={params.q}
             placeholder="Search number, name, contact, address"
-            className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-emerald-700"
+            className="w-full rounded-md border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-red-700"
           />
         </label>
         <select name="stage" defaultValue={params.stage ?? ""} className="rounded-md border border-slate-300 px-3 py-2 text-sm">

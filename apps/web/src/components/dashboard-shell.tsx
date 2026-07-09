@@ -65,7 +65,7 @@ export function DashboardShell({
         )}
       >
         <div className="flex h-16 items-center gap-3 border-b border-slate-200 px-4">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-emerald-700 text-white">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-red-700 text-white">
             <BookOpen className="h-5 w-5" />
           </div>
           <div className={cn("min-w-0 flex-1", isCollapsed && "lg:hidden")}>
@@ -110,7 +110,7 @@ export function DashboardShell({
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100",
                   isCollapsed && "lg:justify-center lg:px-2",
-                  isActive && "bg-emerald-50 text-emerald-900"
+                  isActive && "bg-red-50 text-red-900"
                 )}
               >
                 <item.icon className="h-4 w-4 shrink-0" />
@@ -121,7 +121,7 @@ export function DashboardShell({
                   <span
                     aria-label={`${badge} pending approvals`}
                     className={cn(
-                      "inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-700 px-1.5 py-0.5 text-xs font-semibold leading-none text-white",
+                      "inline-flex min-w-5 items-center justify-center rounded-full bg-red-700 px-1.5 py-0.5 text-xs font-semibold leading-none text-white",
                       isCollapsed && "lg:hidden"
                     )}
                   >

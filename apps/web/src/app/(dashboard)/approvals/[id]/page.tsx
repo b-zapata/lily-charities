@@ -23,7 +23,7 @@ export default async function ApprovalDetailPage({
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-sm font-medium text-emerald-700">{formatRequestType(request.request_type)}</div>
+        <div className="text-sm font-medium text-red-700">{formatRequestType(request.request_type)}</div>
         <h1 className="text-xl font-semibold text-slate-950">{request.school_name ?? "New school request"}</h1>
         <div className="mt-2 flex flex-wrap gap-2">
           <StatusBadge value={request.status} />

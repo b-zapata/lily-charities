@@ -42,7 +42,7 @@ export function UserTableRows({
             tabIndex={isClickable ? 0 : undefined}
             role={isClickable ? "link" : undefined}
             aria-label={isClickable ? `Open ${user.display_name}` : undefined}
-            className={isClickable ? "cursor-pointer hover:bg-slate-50 focus:bg-emerald-50 focus:outline-none" : undefined}
+            className={isClickable ? "cursor-pointer hover:bg-slate-50 focus:bg-red-50 focus:outline-none" : undefined}
             onClick={isClickable ? (event) => {
               if (isInteractiveTarget(event.target)) return;
               router.push(href);
@@ -57,7 +57,7 @@ export function UserTableRows({
           >
             <td className="px-3 py-2 font-medium text-slate-900">
               {isClickable ? (
-                <Link href={href} className="text-emerald-800 hover:underline" onClick={(event) => event.stopPropagation()}>
+                <Link href={href} className="text-red-800 hover:underline" onClick={(event) => event.stopPropagation()}>
                   {user.display_name}
                 </Link>
               ) : (
