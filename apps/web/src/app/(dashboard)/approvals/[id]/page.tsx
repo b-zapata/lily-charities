@@ -43,33 +43,18 @@ export default async function ApprovalDetailPage({
 
       <section className="rounded-md border border-slate-200 bg-white">
         <div className="border-b border-slate-200 p-4">
-          <h2 className="font-semibold text-slate-950">Proposed changes</h2>
+          <h2 className="font-semibold text-slate-950">Changed fields</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Review the field, current value, and proposed value before making a decision.
+            Only fields with a different proposed value are shown here.
           </p>
         </div>
         {changes.length === 0 ? (
           <div className="p-4 text-sm text-slate-500">No changed fields were found in this submission.</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Field</th>
-                  <th className="px-4 py-3 font-medium">Current</th>
-                  <th className="px-4 py-3 font-medium">Proposed</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {changes.map((change) => (
-                  <tr key={change.key}>
-                    <td className="w-1/4 px-4 py-3 font-medium text-slate-900">{change.label}</td>
-                    <td className="w-1/3 px-4 py-3 text-slate-600">{change.before}</td>
-                    <td className="px-4 py-3 text-slate-900">{change.after}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y divide-slate-100">
+            {changes.map((change) => (
+              <ChangeCard key={change.key} change={change} />
+            ))}
           </div>
         )}
       </section>
@@ -208,6 +193,29 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ChangeCard({ change }: { change: ChangeRow }) {
+  return (
+    <div className="grid gap-3 p-4 md:grid-cols-[minmax(10rem,14rem)_1fr_1fr] md:items-start">
+      <div>
+        <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Changed field</div>
+        <div className="mt-1 font-semibold text-slate-950">{change.label}</div>
+      </div>
+      <div>
+        <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Current</div>
+        <div className="mt-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          {change.before}
+        </div>
+      </div>
+      <div>
+        <div className="text-xs font-medium uppercase tracking-wide text-red-700">Proposed</div>
+        <div className="mt-1 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-slate-950">
+          {change.after}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function buildChangeRows(request: ChangeRequestDetail) {
   const proposed = asRecord(request.proposed_data);
   const before = asRecord(request.before_data);
@@ -215,14 +223,16 @@ function buildChangeRows(request: ChangeRequestDetail) {
   if (request.request_type === "new_school") {
     return [
       ...buildSchoolRows(childRecordOrSelf(proposed, "school"), {}, "New school"),
-      ...buildContactRows(proposed.contacts, "New school")
+      ...buildContactChangeRows(proposed.contacts, [], "New school", false)
     ];
   }
 
   if (request.request_type === "school_edit") {
+    const beforeContacts = Array.isArray(before.contacts) ? before.contacts : request.current_contacts ?? [];
+
     return [
-      ...buildSchoolRows(childRecordOrSelf(proposed, "school"), before, "Blank", true),
-      ...buildContactRows(proposed.contacts, "Current contact not included in this request")
+      ...buildSchoolRows(childRecordOrSelf(proposed, "school"), childRecordOrSelf(before, "school"), "Blank", true),
+      ...buildContactChangeRows(proposed.contacts, beforeContacts, "Blank", true)
     ];
   }
 
@@ -247,7 +257,10 @@ function buildSchoolRows(payload: Record<string, unknown>, before: Record<string
 
   const beforePin = formatPin(before.latitude, before.longitude);
   const afterPin = formatPin(payload.latitude, payload.longitude);
-  if (afterPin !== "Blank" && (!changedOnly || beforePin !== afterPin)) {
+  const pinWasSubmitted =
+    Object.prototype.hasOwnProperty.call(payload, "latitude") ||
+    Object.prototype.hasOwnProperty.call(payload, "longitude");
+  if ((!changedOnly && afterPin !== "Blank") || (changedOnly && pinWasSubmitted && beforePin !== afterPin)) {
     rows.push({
       key: "map_pin",
       label: "Map pin",
@@ -292,19 +305,34 @@ function buildPlainRows(
   return rows;
 }
 
-function buildContactRows(value: unknown, emptyBefore: string) {
+function buildContactChangeRows(value: unknown, beforeValue: unknown, emptyBefore: string, changedOnly: boolean) {
   if (!Array.isArray(value)) return [];
+
+  const beforeContacts = Array.isArray(beforeValue) ? beforeValue.map(asRecord) : [];
 
   return value.flatMap((contact, index) => {
     const record = asRecord(contact);
     if (!record.name && !record.phone && !record.email && !record.title) return [];
     const role = typeof record.role === "string" ? record.role : `contact_${index + 1}`;
-    return [{
-      key: `contact_${index}`,
-      label: `${humanize(role)} contact`,
-      before: emptyBefore,
-      after: formatContact(record)
-    }];
+    const beforeContact = beforeContacts.find((item) => item.role === role) ?? {};
+    const rows: ChangeRow[] = [];
+
+    for (const field of ["name", "phone", "email", "title"] as const) {
+      addRow(
+        rows,
+        field,
+        record[field],
+        beforeContact[field],
+        emptyBefore,
+        changedOnly,
+        `${humanize(role)} ${fieldLabels[field] ?? humanize(field)}`
+      );
+    }
+
+    return rows.map((row) => ({
+      ...row,
+      key: `${role}-${row.key}`
+    }));
   });
 }
 
@@ -314,17 +342,20 @@ function addRow(
   afterValue: unknown,
   beforeValue: unknown,
   emptyBefore: string,
-  changedOnly: boolean
+  changedOnly: boolean,
+  labelOverride?: string
 ) {
-  if (ignoredFields.has(field) || isEmptyValue(afterValue)) return;
+  if (ignoredFields.has(field)) return;
+  if (!changedOnly && isEmptyValue(afterValue)) return;
 
   const before = formatValue(beforeValue);
   const after = formatValue(afterValue);
   if (changedOnly && before === after) return;
+  if (changedOnly && before === "Blank" && after === "Blank") return;
 
   rows.push({
     key: `${field}-${rows.length}`,
-    label: fieldLabels[field] ?? humanize(field),
+    label: labelOverride ?? fieldLabels[field] ?? humanize(field),
     before: before === "Blank" ? emptyBefore : before,
     after
   });
@@ -366,17 +397,6 @@ function formatValue(value: unknown): string {
 function formatPin(latitude: unknown, longitude: unknown) {
   if (isEmptyValue(latitude) || isEmptyValue(longitude)) return "Blank";
   return `${formatValue(latitude)}, ${formatValue(longitude)}`;
-}
-
-function formatContact(contact: Record<string, unknown>) {
-  const parts = [
-    formatValue(contact.name),
-    isEmptyValue(contact.title) ? null : formatValue(contact.title),
-    isEmptyValue(contact.phone) ? null : formatValue(contact.phone),
-    isEmptyValue(contact.email) ? null : formatValue(contact.email)
-  ].filter(Boolean);
-
-  return parts.join(" - ");
 }
 
 function formatDateTime(value: string | null) {

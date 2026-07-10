@@ -71,11 +71,14 @@ export default async function EditSchoolPage({
 
         <FormSection
           title="School identity"
-          description="Keep the Lily school number and official names aligned with the current records."
+          description="Keep the official school names aligned with the current records. Lily school number is generated automatically and cannot be edited here."
           className="grid gap-4 md:grid-cols-2"
           borderTop
         >
-          <Field label="School number" name="school_number" defaultValue={school.school_number} required />
+          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 md:col-span-2">
+            <div className="font-medium text-slate-800">School number</div>
+            <div>{school.school_number}</div>
+          </div>
           <Field
             label="School name in English"
             name="name_english"
@@ -92,7 +95,7 @@ export default async function EditSchoolPage({
           className="grid gap-4 md:grid-cols-2"
           borderTop
         >
-          <Field label="Address" name="address" defaultValue={school.address} full />
+          <AddressField label="Address" name="address" defaultValue={school.address} />
           <Field label="District" name="district" defaultValue={school.district} />
           {!hasMapPin ? (
             <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
@@ -105,6 +108,7 @@ export default async function EditSchoolPage({
             initialLongitude={school.longitude}
             initialAddress={school.address}
             addressInputName="address"
+            showMapAddressButton={false}
           />
         </FormSection>
 
@@ -380,6 +384,42 @@ function Field({
         defaultValue={defaultValue ?? ""}
         className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
       />
+    </label>
+  );
+}
+
+function AddressField({
+  label,
+  name,
+  defaultValue,
+  required
+}: {
+  label: string;
+  name: string;
+  defaultValue?: string | null;
+  required?: boolean;
+}) {
+  return (
+    <label className="md:col-span-2">
+      <span className="text-sm font-medium text-slate-700">
+        {label}
+        {required ? <span className="ml-1 text-red-600">*</span> : null}
+      </span>
+      <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+        <input
+          name={name}
+          required={required}
+          defaultValue={defaultValue ?? ""}
+          className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
+        />
+        <button
+          type="button"
+          data-map-address-button={name}
+          className="inline-flex items-center justify-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Map address
+        </button>
+      </div>
     </label>
   );
 }

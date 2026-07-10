@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
   }
 
   const address = new URL(request.url).searchParams.get("address")?.trim();
+  const requestedLanguage = new URL(request.url).searchParams.get("language")?.trim();
+  const language = requestedLanguage === "bn" ? "bn,en;q=0.8" : "en,bn;q=0.8";
   if (!address) {
     return Response.json({ error: "address is required" }, { status: 400 });
   }
@@ -25,11 +27,12 @@ export async function GET(request: NextRequest) {
   url.searchParams.set("format", "jsonv2");
   url.searchParams.set("limit", "1");
   url.searchParams.set("countrycodes", "bd");
+  url.searchParams.set("accept-language", language);
   url.searchParams.set("q", address);
 
   const response = await fetch(url, {
     headers: {
-      "Accept-Language": "en",
+      "Accept-Language": language,
       "User-Agent": "lily-charities-operations/0.1"
     },
     next: { revalidate: 60 * 60 * 24 * 30 }

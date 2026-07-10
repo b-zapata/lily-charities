@@ -11,6 +11,15 @@ type UserRole = "volunteer" | "manager" | "admin";
 
 const contactRoles = ["principal", "lead_teacher", "local_liaison"] as const;
 const assessmentFields = assessmentSections.flatMap((section) => section.fields);
+const pipelineStages = [
+  "identified",
+  "assessed",
+  "selected",
+  "not_selected",
+  "setup_in_progress",
+  "training",
+  "operational"
+] as const;
 const maxFailedLoginAttempts = 3;
 const loginLockoutMinutes = 15;
 
@@ -140,6 +149,27 @@ function optionalNumber(formData: FormData, key: string) {
   }
 
   return numberValue;
+}
+
+function optionalCoordinate(formData: FormData, key: string, min: number, max: number) {
+  const value = optionalString(formData, key);
+  if (value === null) return null;
+
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue) || numberValue < min || numberValue > max) {
+    throw new Error(`${key} is outside the allowed range`);
+  }
+
+  return numberValue;
+}
+
+function readPipelineStage(formData: FormData) {
+  const value = optionalString(formData, "pipeline_stage") ?? "identified";
+  if (!pipelineStages.includes(value as (typeof pipelineStages)[number])) {
+    throw new Error("pipeline_stage is not valid");
+  }
+
+  return value;
 }
 
 function readAssessmentField(formData: FormData, field: AssessmentField) {
@@ -438,22 +468,33 @@ export async function createSchool(formData: FormData) {
   if (!supabase) redirect("/schools/new?error=config");
   const actor = await requireActiveProfile(supabase);
 
-  const schoolNumber = optionalString(formData, "school_number");
-  const latitude = Number(requiredString(formData, "latitude"));
-  const longitude = Number(requiredString(formData, "longitude"));
+  const latitude = optionalCoordinate(formData, "latitude", -90, 90);
+  const longitude = optionalCoordinate(formData, "longitude", -180, 180);
+  if ((latitude === null) !== (longitude === null)) {
+    throw new Error("Both latitude and longitude are required when adding a map pin.");
+  }
+
+  const hasMapPin = latitude !== null && longitude !== null;
   const nameEnglish = requiredString(formData, "name_english");
+  const nameBangla = requiredString(formData, "name_bangla");
+  const address = requiredString(formData, "address");
+  requiredString(formData, "principal_name");
+  requiredString(formData, "principal_phone");
+  requiredString(formData, "principal_email");
+  const schoolStatus = readPipelineStage(formData);
+  const contacts = readContactPatches(formData);
   const schoolPayload = {
-    school_number: schoolNumber,
     name: nameEnglish,
     name_english: nameEnglish,
-    name_bangla: optionalString(formData, "name_bangla"),
-    address: optionalString(formData, "address"),
+    name_bangla: nameBangla,
+    address,
     district: optionalString(formData, "district"),
-    donor_id: optionalString(formData, "donor_id"),
     latitude,
     longitude,
-    map_pin_source: optionalString(formData, "map_pin_source") ?? "manual",
-    pipeline_stage: "identified"
+    needs_map_pin_cleanup: !hasMapPin,
+    map_pin_source: hasMapPin ? optionalString(formData, "map_pin_source") ?? "manual" : null,
+    pipeline_stage: schoolStatus,
+    selection_outcome: legacySelectionOutcomeForStatus(schoolStatus)
   };
 
   if (actor.role === "volunteer") {
@@ -463,7 +504,8 @@ export async function createSchool(formData: FormData) {
       submitted_by: actor.id,
       submitted_at: new Date().toISOString(),
       proposed_data: {
-        school: schoolPayload
+        school: schoolPayload,
+        contacts
       },
       client_mutation_id: `web-${crypto.randomUUID()}`,
       client_created_at: new Date().toISOString()
@@ -475,12 +517,8 @@ export async function createSchool(formData: FormData) {
     redirect("/schools?submitted=new_school");
   }
 
-  let generatedNumber = schoolNumber;
-  if (!generatedNumber) {
-    const { data, error } = await supabase.rpc("generate_school_number");
-    if (error) throw new Error(error.message);
-    generatedNumber = data as string;
-  }
+  const { data: generatedNumber, error: numberError } = await supabase.rpc("generate_school_number");
+  if (numberError) throw new Error(numberError.message);
 
   const { data, error } = await supabase
     .from("schools")
@@ -488,17 +526,17 @@ export async function createSchool(formData: FormData) {
       school_number: generatedNumber,
       name: nameEnglish,
       name_english: nameEnglish,
-      name_bangla: optionalString(formData, "name_bangla"),
-      address: optionalString(formData, "address"),
+      name_bangla: nameBangla,
+      address,
       district: optionalString(formData, "district"),
-      donor_id: optionalString(formData, "donor_id"),
       latitude,
       longitude,
-      map_pin_source: optionalString(formData, "map_pin_source") ?? "manual",
-      map_pin_confirmed_at: new Date().toISOString(),
-      map_pin_confirmed_by: actor.id,
-      pipeline_stage: "identified",
-      selection_outcome: "pending",
+      needs_map_pin_cleanup: !hasMapPin,
+      map_pin_source: hasMapPin ? optionalString(formData, "map_pin_source") ?? "manual" : null,
+      map_pin_confirmed_at: hasMapPin ? new Date().toISOString() : null,
+      map_pin_confirmed_by: hasMapPin ? actor.id : null,
+      pipeline_stage: schoolStatus,
+      selection_outcome: legacySelectionOutcomeForStatus(schoolStatus),
       created_source: "manager",
       created_by: actor.id,
       updated_by: actor.id
@@ -507,6 +545,9 @@ export async function createSchool(formData: FormData) {
     .single();
 
   if (error) throw new Error(error.message);
+  await updateSchoolContacts(supabase, formData, data.id, actor.id);
+  await updateSchoolAssessment(supabase, formData, data.id, actor.id);
+
   await supabase.from("audit_events").insert({
     actor_id: actor.id,
     event_type: "school_created",
@@ -517,12 +558,13 @@ export async function createSchool(formData: FormData) {
       school_number: generatedNumber,
       name: nameEnglish,
       name_english: nameEnglish,
-      name_bangla: optionalString(formData, "name_bangla"),
-      address: optionalString(formData, "address"),
+      name_bangla: nameBangla,
+      address,
       district: optionalString(formData, "district"),
-      donor_id: optionalString(formData, "donor_id"),
       latitude,
-      longitude
+      longitude,
+      needs_map_pin_cleanup: !hasMapPin,
+      pipeline_stage: schoolStatus
     },
     metadata: { source: "manager_dashboard" }
   });
@@ -536,21 +578,24 @@ export async function updateSchool(formData: FormData) {
   const actor = await requireActiveProfile(supabase);
 
   const id = requiredString(formData, "id");
-  const latitudeValue = optionalString(formData, "latitude");
-  const longitudeValue = optionalString(formData, "longitude");
-  const hasConfirmedPin = Boolean(latitudeValue && longitudeValue);
+  const latitude = optionalCoordinate(formData, "latitude", -90, 90);
+  const longitude = optionalCoordinate(formData, "longitude", -180, 180);
+  if ((latitude === null) !== (longitude === null)) {
+    throw new Error("Both latitude and longitude are required when adding a map pin.");
+  }
+
+  const hasConfirmedPin = latitude !== null && longitude !== null;
   const nameEnglish = requiredString(formData, "name_english");
-  const schoolStatus = requiredString(formData, "pipeline_stage");
+  const schoolStatus = readPipelineStage(formData);
   const schoolPatch = {
-    school_number: requiredString(formData, "school_number"),
     name: nameEnglish,
     name_english: nameEnglish,
     name_bangla: optionalString(formData, "name_bangla"),
     address: optionalString(formData, "address"),
     district: optionalString(formData, "district"),
     donor_id: optionalString(formData, "donor_id"),
-    latitude: latitudeValue ? Number(latitudeValue) : null,
-    longitude: longitudeValue ? Number(longitudeValue) : null,
+    latitude,
+    longitude,
     needs_map_pin_cleanup: !hasConfirmedPin,
     map_pin_source: hasConfirmedPin ? optionalString(formData, "map_pin_source") ?? "manual" : null,
     pipeline_stage: schoolStatus,
@@ -565,6 +610,7 @@ export async function updateSchool(formData: FormData) {
 
   if (actor.role === "volunteer") {
     const contacts = readContactPatches(formData);
+    const beforeContacts = await getSchoolContactSnapshot(supabase, id);
     const { error } = await supabase.from("change_requests").insert({
       request_type: "school_edit",
       status: "pending_review",
@@ -576,7 +622,10 @@ export async function updateSchool(formData: FormData) {
         school: schoolPatch,
         contacts
       },
-      before_data: beforeData ?? null,
+      before_data: {
+        school: beforeData ?? null,
+        contacts: beforeContacts
+      },
       conflict_detected: false,
       client_mutation_id: `web-${crypto.randomUUID()}`,
       client_created_at: new Date().toISOString()
@@ -707,6 +756,20 @@ async function updateSchoolContacts(
     const contact = readContact(formData, role);
     await updateSchoolContact(supabase, schoolId, role, contact, actorId);
   }
+}
+
+async function getSchoolContactSnapshot(supabase: SupabaseServerClient, schoolId: string) {
+  const { data, error } = await supabase
+    .from("school_contacts")
+    .select("role, name, phone, email, title, is_primary")
+    .eq("school_id", schoolId)
+    .is("deleted_at", null)
+    .order("role", { ascending: true })
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
 function readContact(formData: FormData, role: (typeof contactRoles)[number]) {

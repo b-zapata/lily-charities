@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ApprovalTableRows } from "@/components/approval-table-rows";
 import { ConfigWarning } from "@/components/config-warning";
 import { EmptyState } from "@/components/empty-state";
-import { StatusBadge } from "@/components/status-badge";
 import { getApprovalQueue, getCurrentUser } from "@/lib/data";
 
 export default async function ApprovalsPage() {
@@ -32,24 +31,7 @@ export default async function ApprovalsPage() {
                 <th className="px-3 py-2">Conflict</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
-              {approvals.map((approval) => (
-                <tr key={approval.id} className="hover:bg-slate-50">
-                  <td className="px-3 py-2">
-                    <Link href={`/approvals/${approval.id}`} className="font-medium text-slate-900">
-                      {approval.request_type.replaceAll("_", " ")}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-2 text-slate-700">
-                    <div>{approval.school_number ?? "Pending number"}</div>
-                    <div className="text-xs text-slate-500">{approval.school_name ?? "New school"}</div>
-                  </td>
-                  <td className="px-3 py-2 text-slate-700">{approval.submitter_name ?? "Unknown"}</td>
-                  <td className="px-3 py-2"><StatusBadge value={approval.status} /></td>
-                  <td className="px-3 py-2 text-slate-700">{approval.conflict_detected ? "Yes" : "No"}</td>
-                </tr>
-              ))}
-            </tbody>
+            <ApprovalTableRows approvals={approvals} />
           </table>
         </div>
       )}

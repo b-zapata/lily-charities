@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Crosshair, MapPin } from "lucide-react";
+import { Crosshair, LocateFixed, MapPin, PinOff } from "lucide-react";
 import type { LatLngTuple, LeafletMouseEvent, Map as LeafletMap, Marker } from "leaflet";
 
 type LeafletNamespace = typeof import("leaflet");
@@ -17,7 +17,8 @@ export function MapPinPicker({
   initialLongitude = null,
   initialAddress = null,
   addressInputName = "address",
-  required = false
+  required = false,
+  showMapAddressButton = true
 }: {
   label?: string;
   latitudeName?: string;
@@ -28,6 +29,7 @@ export function MapPinPicker({
   initialAddress?: string | null;
   addressInputName?: string;
   required?: boolean;
+  showMapAddressButton?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapElementRef = useRef<HTMLDivElement>(null);
@@ -40,6 +42,7 @@ export function MapPinPicker({
   const [message, setMessage] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodeLanguage, setGeocodeLanguage] = useState("en");
   const lastGeocodedAddressRef = useRef<string | null>(null);
 
   const applyPin = useCallback((
@@ -119,15 +122,21 @@ export function MapPinPicker({
     };
   }, [applyPin, initialLatitude, initialLongitude]);
 
-  const geocodeAddress = useCallback(async (address: string, shouldOverwriteExistingPin = false) => {
+  const geocodeAddress = useCallback(async (
+    address: string,
+    shouldOverwriteExistingPin = false,
+    forceLookup = false
+  ) => {
     const trimmedAddress = address.trim();
-    if (!trimmedAddress || lastGeocodedAddressRef.current === trimmedAddress) return;
+    if (!trimmedAddress || (!forceLookup && lastGeocodedAddressRef.current === trimmedAddress)) return;
     if (!shouldOverwriteExistingPin && latitude !== null && longitude !== null) return;
 
     setIsGeocoding(true);
     setMessage(null);
     try {
-      const response = await fetch(`/api/geocode?address=${encodeURIComponent(trimmedAddress)}`);
+      const response = await fetch(
+        `/api/geocode?address=${encodeURIComponent(trimmedAddress)}&language=${encodeURIComponent(geocodeLanguage)}`
+      );
       if (!response.ok) throw new Error("Geocoding failed");
 
       const payload = (await response.json()) as {
@@ -147,7 +156,7 @@ export function MapPinPicker({
     } finally {
       setIsGeocoding(false);
     }
-  }, [applyPin, latitude, longitude]);
+  }, [applyPin, geocodeLanguage, latitude, longitude]);
 
   useEffect(() => {
     if (initialLatitude !== null && initialLongitude !== null) return;
@@ -181,6 +190,24 @@ export function MapPinPicker({
       addressField.removeEventListener("change", scheduleGeocode);
     };
   }, [addressInputName, geocodeAddress, pinSource]);
+
+  useEffect(() => {
+    const form = containerRef.current?.closest("form");
+    const button = form?.querySelector<HTMLButtonElement>(`button[data-map-address-button="${addressInputName}"]`);
+    const addressInput = form?.querySelector<HTMLInputElement>(`input[name="${addressInputName}"]`);
+    if (!button || !addressInput) return;
+
+    function handleClick() {
+      if (!addressInput?.value.trim()) {
+        setMessage("Enter an address before mapping it.");
+        return;
+      }
+      geocodeAddress(addressInput.value, true, true);
+    }
+
+    button.addEventListener("click", handleClick);
+    return () => button.removeEventListener("click", handleClick);
+  }, [addressInputName, geocodeAddress]);
 
   useEffect(() => {
     if (!required) return;
@@ -220,6 +247,15 @@ export function MapPinPicker({
     );
   }
 
+  function removePin() {
+    markerRef.current?.remove();
+    markerRef.current = null;
+    setLatitude(null);
+    setLongitude(null);
+    setPinSource("manual");
+    setMessage("Pin removed. Click the map, use current location, or map the address to add one.");
+  }
+
   return (
     <div ref={containerRef} className="md:col-span-2">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -227,14 +263,55 @@ export function MapPinPicker({
           {label}
           {required ? <span className="ml-1 text-red-600">*</span> : null}
         </label>
-        <button
-          type="button"
-          onClick={useCurrentLocation}
-          className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-        >
-          <Crosshair className="h-3.5 w-3.5" />
-          {isLocating ? "Locating..." : "Use current location"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600">
+            Address language
+            <select
+              value={geocodeLanguage}
+              onChange={(event) => setGeocodeLanguage(event.target.value)}
+              className="rounded-md border border-slate-300 px-2 py-1 text-xs outline-none focus:border-red-700"
+            >
+              <option value="en">English</option>
+              <option value="bn">Bangla</option>
+            </select>
+          </label>
+          {showMapAddressButton ? (
+            <button
+              type="button"
+              onClick={() => {
+                const form = containerRef.current?.closest("form");
+                const addressInput = form?.querySelector<HTMLInputElement>(`input[name="${addressInputName}"]`);
+                if (!addressInput?.value.trim()) {
+                  setMessage("Enter an address before mapping it.");
+                  return;
+                }
+                geocodeAddress(addressInput.value, true, true);
+              }}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <LocateFixed className="h-3.5 w-3.5" />
+              {isGeocoding ? "Mapping..." : "Map address"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={useCurrentLocation}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <Crosshair className="h-3.5 w-3.5" />
+            {isLocating ? "Locating..." : "Use current location"}
+          </button>
+          {latitude !== null && longitude !== null ? (
+            <button
+              type="button"
+              onClick={removePin}
+              className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              <PinOff className="h-3.5 w-3.5" />
+              Remove pin
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <input name={latitudeName} type="hidden" value={latitude?.toFixed(7) ?? ""} />

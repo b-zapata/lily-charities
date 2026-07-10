@@ -110,6 +110,14 @@ export type ChangeRequestDetail = ApprovalQueueItem & {
   applied_data: Record<string, unknown> | null;
   component_decisions: Record<string, unknown> | null;
   review_notes: string | null;
+  current_contacts?: Array<{
+    role: string;
+    name: string;
+    phone: string | null;
+    email: string | null;
+    title: string | null;
+    is_primary?: boolean;
+  }>;
 };
 
 export type UserProfile = {

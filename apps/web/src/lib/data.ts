@@ -369,11 +369,30 @@ export async function getChangeRequest(id: string) {
 
   if (!data) return null;
 
+  let currentContacts: ChangeRequestDetail["current_contacts"] = [];
+  if (data.school_id) {
+    const { data: contacts, error: contactsError } = await supabase
+      .from("school_contacts")
+      .select("role, name, phone, email, title, is_primary")
+      .eq("school_id", data.school_id)
+      .is("deleted_at", null)
+      .order("role", { ascending: true })
+      .order("is_primary", { ascending: false })
+      .order("created_at", { ascending: true });
+
+    if (contactsError) {
+      console.error(contactsError);
+    } else {
+      currentContacts = contacts ?? [];
+    }
+  }
+
   return {
     ...data,
     school_number: data.schools?.school_number ?? null,
     school_name: data.schools?.name ?? null,
-    submitter_name: data.profiles?.display_name ?? null
+    submitter_name: data.profiles?.display_name ?? null,
+    current_contacts: currentContacts
   } as ChangeRequestDetail;
 }
 
