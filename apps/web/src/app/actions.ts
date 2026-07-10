@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
+import {
+  buildSchoolAgreementIntro,
+  schoolAgreementConditions,
+  schoolAgreementVersion
+} from "@/lib/school-agreement";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { AssessmentField } from "@/lib/assessment-fields";
 
@@ -11,6 +16,8 @@ type UserRole = "volunteer" | "manager" | "admin";
 
 const contactRoles = ["principal", "lead_teacher", "local_liaison"] as const;
 const assessmentFields = assessmentSections.flatMap((section) => section.fields);
+const studentGradeCountFields = assessmentGradeCountFields.filter((grade) => grade.key !== "total");
+const allowedAssessmentImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const pipelineStages = [
   "identified",
   "assessed",
@@ -56,7 +63,7 @@ async function requireManagerProfile(supabase: SupabaseServerClient) {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, role")
+    .select("id, role, display_name")
     .eq("id", authData.user.id)
     .maybeSingle();
 
@@ -139,6 +146,12 @@ function optionalBoolean(formData: FormData, key: string) {
   throw new Error(`${key} must be yes or no`);
 }
 
+function requiredBoolean(formData: FormData, key: string) {
+  const value = optionalBoolean(formData, key);
+  if (value === null) throw new Error(`${key} is required`);
+  return value;
+}
+
 function optionalNumber(formData: FormData, key: string) {
   const value = optionalString(formData, key);
   if (value === null) return null;
@@ -149,6 +162,12 @@ function optionalNumber(formData: FormData, key: string) {
   }
 
   return numberValue;
+}
+
+function requiredNumber(formData: FormData, key: string) {
+  const value = optionalNumber(formData, key);
+  if (value === null) throw new Error(`${key} is required`);
+  return value;
 }
 
 function optionalCoordinate(formData: FormData, key: string, min: number, max: number) {
@@ -478,11 +497,7 @@ export async function createSchool(formData: FormData) {
   const nameEnglish = requiredString(formData, "name_english");
   const nameBangla = requiredString(formData, "name_bangla");
   const address = requiredString(formData, "address");
-  requiredString(formData, "principal_name");
-  requiredString(formData, "principal_phone");
-  requiredString(formData, "principal_email");
-  const schoolStatus = readPipelineStage(formData);
-  const contacts = readContactPatches(formData);
+  const schoolStatus = "identified";
   const schoolPayload = {
     name: nameEnglish,
     name_english: nameEnglish,
@@ -504,8 +519,7 @@ export async function createSchool(formData: FormData) {
       submitted_by: actor.id,
       submitted_at: new Date().toISOString(),
       proposed_data: {
-        school: schoolPayload,
-        contacts
+        school: schoolPayload
       },
       client_mutation_id: `web-${crypto.randomUUID()}`,
       client_created_at: new Date().toISOString()
@@ -545,8 +559,6 @@ export async function createSchool(formData: FormData) {
     .single();
 
   if (error) throw new Error(error.message);
-  await updateSchoolContacts(supabase, formData, data.id, actor.id);
-  await updateSchoolAssessment(supabase, formData, data.id, actor.id);
 
   await supabase.from("audit_events").insert({
     actor_id: actor.id,
@@ -569,7 +581,235 @@ export async function createSchool(formData: FormData) {
     metadata: { source: "manager_dashboard" }
   });
   revalidatePath("/schools");
-  redirect(`/schools/${data.id}`);
+  redirect(`/schools/${data.id}/created`);
+}
+
+export async function submitInitialAssessment(formData: FormData) {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) throw new Error("Supabase is not configured");
+  const actor = await requireManagerProfile(supabase);
+
+  const schoolId = requiredString(formData, "school_id");
+  const { data: school, error: schoolError } = await supabase
+    .from("schools")
+    .select("id, name, name_english, name_bangla, pipeline_stage")
+    .eq("id", schoolId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (schoolError) throw new Error(schoolError.message);
+  if (!school) throw new Error("School not found.");
+
+  const now = new Date().toISOString();
+  const visitDate = optionalString(formData, "visit_date") ?? now.slice(0, 10);
+  const representedSchoolName = school.name_english || school.name;
+  const principalName = requiredString(formData, "principal_name");
+  const principalPhone = requiredString(formData, "principal_phone");
+  const principalEmail = optionalString(formData, "principal_email");
+  const principalTitle = optionalString(formData, "principal_title") ?? "Principal";
+  const typedSignature = requiredString(formData, "typed_signature");
+  const agreementAccepted = formData.get("school_agreement_accepted") === "on";
+
+  if (!agreementAccepted) {
+    throw new Error("The school agreement must be accepted before submitting the assessment.");
+  }
+
+  const underprivilegedOrLowIncomeArea = requiredBoolean(formData, "assessment_underprivileged_or_low_income_area");
+  const gradeCounts = studentGradeCountFields.map((grade) => ({
+    grade_label: grade.key,
+    student_count: requiredNumber(formData, `assessment_grade_count_${grade.key}`)
+  }));
+  const estimatedTotalStudents = gradeCounts.reduce((total, grade) => total + grade.student_count, 0);
+  const isGoodFitForProject = requiredBoolean(formData, "assessment_is_good_fit_for_project");
+  const additionalComments = optionalString(formData, "assessment_additional_comments");
+  const preparedByName =
+    typeof actor.display_name === "string" && actor.display_name.trim() ? actor.display_name.trim() : null;
+
+  await updateSchoolContact(
+    supabase,
+    schoolId,
+    "principal",
+    {
+      name: principalName,
+      phone: principalPhone,
+      email: principalEmail,
+      title: principalTitle
+    },
+    actor.id
+  );
+
+  const agreementSnapshot = {
+    form_version: schoolAgreementVersion,
+    intro: buildSchoolAgreementIntro(representedSchoolName, principalName),
+    conditions: schoolAgreementConditions,
+    typed_signature: typedSignature,
+    signed_for_school: representedSchoolName,
+    captured_in: "manager_dashboard"
+  };
+
+  const { data: existingAgreement, error: existingAgreementError } = await supabase
+    .from("school_agreements")
+    .select("id")
+    .eq("school_id", schoolId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existingAgreementError) throw new Error(existingAgreementError.message);
+
+  const agreementPatch = {
+    agreement_date: visitDate,
+    represented_school_name: representedSchoolName,
+    signatory_name: principalName,
+    signatory_title: principalTitle,
+    signatory_phone: principalPhone,
+    app_language: "en",
+    agreement_language: "en",
+    terms_version: schoolAgreementVersion,
+    terms_text_snapshot: agreementSnapshot,
+    authorized_signatory_confirmed: true,
+    accepted_standard_terms: true,
+    accepted_at: now,
+    captured_by_user_id: actor.id,
+    notes: "Website-native typed signature captured for the school agreement.",
+    approved_by: actor.id,
+    approved_at: now,
+    updated_by: actor.id,
+    deleted_at: null
+  };
+
+  const agreementResult = existingAgreement
+    ? await supabase
+      .from("school_agreements")
+      .update(agreementPatch)
+      .eq("id", existingAgreement.id)
+      .select("id")
+      .single()
+    : await supabase
+      .from("school_agreements")
+      .insert({
+        school_id: schoolId,
+        created_by: actor.id,
+        ...agreementPatch
+      })
+      .select("id")
+      .single();
+
+  if (agreementResult.error) throw new Error(agreementResult.error.message);
+
+  const assessment = {
+    form_version: "initial_assessment_wizard_v1",
+    visit_date: visitDate,
+    prepared_by_user_id: actor.id,
+    prepared_by_name: preparedByName,
+    underprivileged_or_low_income_area: underprivilegedOrLowIncomeArea,
+    commitment_from_school_administration: true,
+    supports_establishing_and_maintaining_library: true,
+    willing_to_participate_in_ambassador_program: true,
+    at_least_200_students: estimatedTotalStudents >= 200,
+    estimated_total_students: estimatedTotalStudents,
+    is_good_fit_for_project: isGoodFitForProject,
+    additional_comments: additionalComments
+  };
+  const rawFormData = {
+    ...assessment,
+    school_agreement: agreementSnapshot,
+    grade_counts: [
+      ...gradeCounts,
+      { grade_label: "total", student_count: estimatedTotalStudents }
+    ]
+  };
+
+  const { data: existingAssessment, error: existingAssessmentError } = await supabase
+    .from("school_assessments")
+    .select("id")
+    .eq("school_id", schoolId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (existingAssessmentError) throw new Error(existingAssessmentError.message);
+
+  const assessmentPatch = {
+    ...assessment,
+    raw_form_data: rawFormData,
+    updated_by: actor.id,
+    deleted_at: null
+  };
+
+  const assessmentResult = existingAssessment
+    ? await supabase
+      .from("school_assessments")
+      .update(assessmentPatch)
+      .eq("id", existingAssessment.id)
+      .select("id")
+      .single()
+    : await supabase
+      .from("school_assessments")
+      .insert({
+        school_id: schoolId,
+        created_by: actor.id,
+        ...assessmentPatch
+      })
+      .select("id")
+      .single();
+
+  if (assessmentResult.error) throw new Error(assessmentResult.error.message);
+
+  const gradeRows = [
+    ...gradeCounts,
+    { grade_label: "total", student_count: estimatedTotalStudents }
+  ].map((grade) => ({
+    assessment_id: assessmentResult.data.id,
+    grade_label: grade.grade_label,
+    student_count: grade.student_count
+  }));
+
+  const { error: gradeError } = await supabase
+    .from("assessment_grade_counts")
+    .upsert(gradeRows, { onConflict: "assessment_id,grade_label" });
+
+  if (gradeError) throw new Error(gradeError.message);
+
+  const uploadedPhotos = await uploadAssessmentPhotos(
+    supabase,
+    formData,
+    schoolId,
+    assessmentResult.data.id,
+    actor.id
+  );
+
+  if (["identified", "assessed"].includes(String(school.pipeline_stage))) {
+    const { error: statusError } = await supabase
+      .from("schools")
+      .update({
+        pipeline_stage: "assessed",
+        selection_outcome: "pending",
+        updated_by: actor.id
+      })
+      .eq("id", schoolId);
+
+    if (statusError) throw new Error(statusError.message);
+  }
+
+  await supabase.from("audit_events").insert({
+    actor_id: actor.id,
+    event_type: "initial_assessment_completed",
+    entity_type: "school_assessment",
+    entity_id: assessmentResult.data.id,
+    school_id: schoolId,
+    after_data: {
+      assessment: rawFormData,
+      agreement_id: agreementResult.data.id,
+      photo_ids: uploadedPhotos.map((photo) => photo.id)
+    },
+    metadata: { source: "manager_dashboard" }
+  });
+
+  revalidatePath("/schools");
+  revalidatePath(`/schools/${schoolId}`);
+  revalidatePath(`/schools/${schoolId}/assessment`);
+  redirect(`/schools/${schoolId}?submitted=assessment`);
 }
 
 export async function updateSchool(formData: FormData) {
@@ -744,6 +984,98 @@ async function updateSchoolAssessment(
   });
 
   return assessmentResult.data;
+}
+
+async function uploadAssessmentPhotos(
+  supabase: SupabaseServerClient,
+  formData: FormData,
+  schoolId: string,
+  assessmentId: string,
+  actorId: string
+) {
+  const files = formData.getAll("assessment_photos").filter(isUploadedFile);
+  const uploadedPhotos: Array<{ id: string }> = [];
+
+  for (const file of files) {
+    if (!allowedAssessmentImageTypes.has(file.type)) {
+      throw new Error("Assessment photos must be JPEG, PNG, or WebP images.");
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      throw new Error("Each assessment photo must be 20 MB or smaller.");
+    }
+
+    const storagePath = [
+      "schools",
+      schoolId,
+      "assessments",
+      assessmentId,
+      `${crypto.randomUUID()}-${sanitizeStorageFileName(file.name)}`
+    ].join("/");
+
+    const { error: uploadError } = await supabase.storage
+      .from("school-photos")
+      .upload(storagePath, file, {
+        contentType: file.type,
+        upsert: false
+      });
+
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data: photo, error: photoError } = await supabase
+      .from("photos")
+      .insert({
+        school_id: schoolId,
+        assessment_id: assessmentId,
+        uploaded_by: actorId,
+        photo_type: "other",
+        storage_bucket: "school-photos",
+        storage_path: storagePath,
+        content_type: file.type,
+        file_size_bytes: file.size,
+        caption: "Initial assessment photo",
+        approval_status: "pending_review"
+      })
+      .select("id")
+      .single();
+
+    if (photoError) throw new Error(photoError.message);
+
+    const { error: approvalError } = await supabase
+      .from("photos")
+      .update({
+        approval_status: "approved",
+        approved_by: actorId,
+        approved_at: new Date().toISOString()
+      })
+      .eq("id", photo.id);
+
+    if (approvalError) throw new Error(approvalError.message);
+    uploadedPhotos.push({ id: photo.id });
+  }
+
+  return uploadedPhotos;
+}
+
+function isUploadedFile(value: FormDataEntryValue): value is File {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "size" in value &&
+    "arrayBuffer" in value &&
+    typeof value.arrayBuffer === "function" &&
+    typeof value.size === "number" &&
+    value.size > 0
+  );
+}
+
+function sanitizeStorageFileName(value: string) {
+  const sanitized = value
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+
+  return sanitized || "photo";
 }
 
 async function updateSchoolContacts(

@@ -125,8 +125,8 @@ export default async function EditSchoolPage({
 
         {!isVolunteer ? (
           <FormSection
-            title="School visit checklist"
-            description="Backfill or correct the initial assessment checklist for legacy schools and manager-entered records."
+            title="Initial assessment"
+            description="Backfill or correct the assessment summary for legacy schools and manager-entered records."
             className="space-y-5"
             borderTop
           >

@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { CalendarClock, Edit, ImageIcon, MapPin } from "lucide-react";
+import { CalendarClock, ClipboardCheck, Edit, ImageIcon, MapPin } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
-import { getSchool, getSchoolPhotos, getSchoolTimeline } from "@/lib/data";
+import { getCurrentUser, getSchool, getSchoolPhotos, getSchoolTimeline } from "@/lib/data";
 import type { AssessmentField } from "@/lib/assessment-fields";
 import type { SchoolDetail, SchoolPhotoPage, SchoolTimelineEvent } from "@/lib/types";
 
@@ -15,12 +15,13 @@ export default async function SchoolDetailPage({
 }) {
   const { id } = await params;
   const query = (await searchParams) ?? {};
-  const school = await getSchool(id);
+  const [school, user] = await Promise.all([getSchool(id), getCurrentUser()]);
 
   if (!school) {
     return <div className="rounded-md border border-slate-200 bg-white p-6 text-sm">School not found.</div>;
   }
 
+  const canManage = Boolean(user && ["manager", "admin"].includes(user.role));
   const [timeline, photos] = await Promise.all([
     getSchoolTimeline(school),
     getSchoolPhotos(school.id, {
@@ -38,13 +39,24 @@ export default async function SchoolDetailPage({
           {school.name_bangla ? <p className="text-sm text-slate-700">{school.name_bangla}</p> : null}
           <p className="text-sm text-slate-500">{school.address ?? "No address"}</p>
         </div>
-        <Link
-          href={`/schools/${school.id}/edit`}
-          className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-50"
-        >
-          <Edit className="h-4 w-4" />
-          Edit
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {canManage ? (
+            <Link
+              href={`/schools/${school.id}/assessment`}
+              className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              Initial assessment
+            </Link>
+          ) : null}
+          <Link
+            href={`/schools/${school.id}/edit`}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-50"
+          >
+            <Edit className="h-4 w-4" />
+            Edit
+          </Link>
+        </div>
       </div>
 
       <section className="grid gap-3 md:grid-cols-3">
@@ -56,6 +68,12 @@ export default async function SchoolDetailPage({
       {query.submitted === "edit" ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
           School edit proposal submitted for manager approval.
+        </div>
+      ) : null}
+
+      {query.submitted === "assessment" ? (
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          Initial assessment saved.
         </div>
       ) : null}
 
@@ -136,7 +154,7 @@ function SchoolVisitFindings({ school }: { school: SchoolDetail }) {
   const gradeCounts = getGradeCounts(school);
 
   return (
-    <section className="grid gap-4 lg:grid-cols-2" aria-label="School visit checklist data">
+    <section className="grid gap-4 lg:grid-cols-2" aria-label="Initial assessment data">
       {assessmentSections.map((section) => (
         <VisitCard key={section.title} title={section.title}>
           {section.fields.map((field) => (
