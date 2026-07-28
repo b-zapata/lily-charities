@@ -22,7 +22,7 @@ export const assessmentSections: AssessmentSection[] = [
     ]
   },
   {
-    title: "Final Remarks",
+    title: "Remarks from Volunteer",
     fields: [
       { key: "is_good_fit_for_project", label: "Recommended for the program", type: "boolean" },
       { key: "additional_comments", label: "Notes", type: "textarea", full: true }

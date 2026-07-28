@@ -50,6 +50,15 @@ export type SchoolDetail = SchoolSummary & {
     email: string | null;
     title: string | null;
   }>;
+  agreement?: {
+    id: string;
+    agreement_date: string;
+    signatory_name: string;
+    signatory_title: string | null;
+    signatory_phone: string | null;
+    accepted_at: string;
+    approved_at: string | null;
+  } | null;
   assessment?: Record<string, unknown> | null;
   assessment_grade_counts?: Array<{
     grade_label: string;

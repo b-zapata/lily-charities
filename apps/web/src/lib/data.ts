@@ -138,17 +138,64 @@ export async function getSchool(id: string) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return null;
 
-  const { data, error } = await supabase
-    .from("school_detail_view")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const [schoolResult, agreementResult] = await Promise.all([
+    supabase
+      .from("school_detail_view")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("school_agreements")
+      .select("id, agreement_date, signatory_name, signatory_title, signatory_phone, accepted_at, approved_at")
+      .eq("school_id", id)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+  ]);
 
-  if (error) {
-    console.error(error);
+  if (schoolResult.error) {
+    console.error(schoolResult.error);
     return null;
   }
-  return data as SchoolDetail | null;
+
+  if (agreementResult.error) {
+    console.error(agreementResult.error);
+  }
+
+  const school = schoolResult.data as SchoolDetail | null;
+  if (!school) return null;
+
+  const agreement = agreementResult.error
+    ? null
+    : schoolAgreementSummary(agreementResult.data);
+
+  return {
+    ...school,
+    agreement,
+    agreement_id: agreement?.id ?? null,
+    agreement_approved_at: agreement?.approved_at ?? null
+  } satisfies SchoolDetail;
+}
+
+function schoolAgreementSummary(value: unknown): NonNullable<SchoolDetail["agreement"]> | null {
+  const agreement = asRecord(value);
+  const id = stringValue(agreement.id);
+  const agreementDate = stringValue(agreement.agreement_date);
+  const signatoryName = stringValue(agreement.signatory_name);
+  const acceptedAt = stringValue(agreement.accepted_at);
+
+  if (!id || !agreementDate || !signatoryName || !acceptedAt) return null;
+
+  return {
+    id,
+    agreement_date: agreementDate,
+    signatory_name: signatoryName,
+    signatory_title: stringValue(agreement.signatory_title),
+    signatory_phone: stringValue(agreement.signatory_phone),
+    accepted_at: acceptedAt,
+    approved_at: stringValue(agreement.approved_at)
+  };
 }
 
 export async function getSchoolTimeline(school: SchoolDetail) {
