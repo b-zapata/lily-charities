@@ -220,6 +220,7 @@ Legacy compatibility field only.
 | `school_seal` | School seal or stamp evidence. |
 | `paper_agreement` | Photo of physically signed paper agreement fallback. |
 | `training` | Ambassador or lead teacher training photo. |
+| `principal_meeting` | Visit photo with the head teacher/principal. |
 | `other` | Other supporting photo. |
 
 ### `approval_status`

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
+import { requiredAssessmentPhotos } from "@/lib/assessment-photos";
 import {
   buildSchoolAgreementIntro,
   schoolAgreementConditions,
@@ -993,10 +994,13 @@ async function uploadAssessmentPhotos(
   assessmentId: string,
   actorId: string
 ) {
-  const files = formData.getAll("assessment_photos").filter(isUploadedFile);
   const uploadedPhotos: Array<{ id: string }> = [];
 
-  for (const file of files) {
+  const photoFiles = requiredAssessmentPhotos.map((photoDefinition) => {
+    const file = formData.getAll(`assessment_photo_${photoDefinition.key}`).find(isUploadedFile);
+    if (!file) {
+      throw new Error(`${photoDefinition.label} is required.`);
+    }
     if (!allowedAssessmentImageTypes.has(file.type)) {
       throw new Error("Assessment photos must be JPEG, PNG, or WebP images.");
     }
@@ -1004,6 +1008,10 @@ async function uploadAssessmentPhotos(
       throw new Error("Each assessment photo must be 20 MB or smaller.");
     }
 
+    return { photoDefinition, file };
+  });
+
+  for (const { photoDefinition, file } of photoFiles) {
     const storagePath = [
       "schools",
       schoolId,
@@ -1027,12 +1035,12 @@ async function uploadAssessmentPhotos(
         school_id: schoolId,
         assessment_id: assessmentId,
         uploaded_by: actorId,
-        photo_type: "other",
+        photo_type: photoDefinition.photoType,
         storage_bucket: "school-photos",
         storage_path: storagePath,
         content_type: file.type,
         file_size_bytes: file.size,
-        caption: "Initial assessment photo",
+        caption: photoDefinition.caption,
         approval_status: "pending_review"
       })
       .select("id")

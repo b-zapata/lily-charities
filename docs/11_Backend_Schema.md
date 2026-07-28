@@ -34,7 +34,7 @@ Create Postgres enums for stable workflow values:
 | `selection_outcome` | Legacy compatibility only: `pending`, `selected`, `not_selected`. Do not expose in MVP UI. |
 | `change_request_type` | `new_school`, `school_edit`, `assessment_submission`, `agreement_submission`, `photo_upload`, `lifecycle_update` |
 | `change_request_status` | `draft`, `pending_review`, `needs_clarification`, `approved`, `partially_approved`, `rejected`, `cancelled` |
-| `photo_type` | `school_exterior`, `classroom`, `library_space`, `bookshelf`, `students`, `agreement_signature`, `school_seal`, `paper_agreement`, `training`, `other` |
+| `photo_type` | `school_exterior`, `classroom`, `library_space`, `bookshelf`, `students`, `agreement_signature`, `school_seal`, `paper_agreement`, `training`, `principal_meeting`, `other` |
 | `approval_status` | `pending_review`, `approved`, `rejected` |
 
 Use text columns instead of enums only when values are expected to change often. The values above are stable enough for enums.
