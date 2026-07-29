@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { InitialAssessmentWizard } from "@/components/initial-assessment-wizard";
 import { getCurrentUser, getSchool } from "@/lib/data";
+import { canSubmitInitialAssessment } from "@/lib/initial-assessment";
 
 export default async function InitialAssessmentPage({
   params
@@ -17,6 +18,9 @@ export default async function InitialAssessmentPage({
   }
   if (!user || !["manager", "admin"].includes(user.role)) {
     redirect(`/schools/${school.id}`);
+  }
+  if (!canSubmitInitialAssessment(school.pipeline_stage)) {
+    redirect(`/schools/${school.id}?assessment=unavailable`);
   }
 
   const principal = school.contacts?.find((contact) => contact.role === "principal") ?? null;

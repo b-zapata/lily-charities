@@ -2,6 +2,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowRight, CheckCircle2, School } from "lucide-react";
 import { getCurrentUser, getSchool } from "@/lib/data";
+import {
+  canSubmitInitialAssessment,
+  initialAssessmentStageMessage
+} from "@/lib/initial-assessment";
 
 export default async function SchoolCreatedPage({
   params
@@ -17,6 +21,7 @@ export default async function SchoolCreatedPage({
   if (!user || !["manager", "admin"].includes(user.role)) {
     redirect(`/schools/${school.id}`);
   }
+  const canSubmitAssessment = canSubmitInitialAssessment(school.pipeline_stage);
 
   return (
     <div className="max-w-2xl">
@@ -43,13 +48,24 @@ export default async function SchoolCreatedPage({
         </div>
 
         <div className="mt-5 flex flex-wrap gap-3">
-          <Link
-            href={`/schools/${school.id}/assessment`}
-            className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
-          >
-            Fill out assessment
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          {canSubmitAssessment ? (
+            <Link
+              href={`/schools/${school.id}/assessment`}
+              className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
+            >
+              Fill out assessment
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title={initialAssessmentStageMessage}
+              className="inline-flex cursor-not-allowed items-center gap-2 rounded-md bg-slate-200 px-3 py-2 text-sm font-medium text-slate-500"
+            >
+              Assessment unavailable
+            </button>
+          )}
           <Link
             href={`/schools/${school.id}`}
             className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

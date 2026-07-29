@@ -5,6 +5,10 @@ import { StatusBadge } from "@/components/status-badge";
 import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
 import { requiredAssessmentPhotos } from "@/lib/assessment-photos";
 import { getCurrentUser, getSchool, getSchoolPhotos, getSchoolTimeline } from "@/lib/data";
+import {
+  canSubmitInitialAssessment,
+  initialAssessmentStageMessage
+} from "@/lib/initial-assessment";
 import type { AssessmentField } from "@/lib/assessment-fields";
 import type { SchoolDetail, SchoolPhoto, SchoolPhotoPage, SchoolTimelineEvent } from "@/lib/types";
 
@@ -36,6 +40,7 @@ export default async function SchoolDetailPage({
     tab?: string;
     photoPage?: string;
     photoPageSize?: string;
+    assessment?: string;
     submitted?: string;
   }>;
 }) {
@@ -49,6 +54,7 @@ export default async function SchoolDetailPage({
   }
 
   const canManage = Boolean(user && ["manager", "admin"].includes(user.role));
+  const canSubmitAssessment = canManage && canSubmitInitialAssessment(school.pipeline_stage);
   const timeline = activeTab === "history" ? await getSchoolTimeline(school) : [];
   const photos = activeTab === "photos"
     ? await getSchoolPhotos(school.id, {
@@ -66,7 +72,7 @@ export default async function SchoolDetailPage({
           {school.name_bangla ? <p className="text-sm text-slate-700">{school.name_bangla}</p> : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          {canManage ? (
+          {canSubmitAssessment ? (
             <Link
               href={`/schools/${school.id}/assessment`}
               className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
@@ -74,6 +80,16 @@ export default async function SchoolDetailPage({
               <ClipboardCheck className="h-4 w-4" />
               Initial assessment
             </Link>
+          ) : canManage ? (
+            <button
+              type="button"
+              disabled
+              title={initialAssessmentStageMessage}
+              className="inline-flex cursor-not-allowed items-center gap-2 rounded-md bg-slate-200 px-3 py-2 text-sm font-medium text-slate-500"
+            >
+              <ClipboardCheck className="h-4 w-4" />
+              Initial assessment
+            </button>
           ) : null}
           <Link
             href={`/schools/${school.id}/edit`}
@@ -94,6 +110,12 @@ export default async function SchoolDetailPage({
       {query.submitted === "assessment" ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
           Initial assessment saved.
+        </div>
+      ) : null}
+
+      {query.assessment === "unavailable" ? (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {initialAssessmentStageMessage}
         </div>
       ) : null}
 

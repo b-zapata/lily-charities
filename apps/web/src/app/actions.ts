@@ -9,6 +9,10 @@ import {
   schoolAgreementConditions,
   schoolAgreementVersion
 } from "@/lib/school-agreement";
+import {
+  canSubmitInitialAssessment,
+  initialAssessmentStageMessage
+} from "@/lib/initial-assessment";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { AssessmentField } from "@/lib/assessment-fields";
 
@@ -600,6 +604,9 @@ export async function submitInitialAssessment(formData: FormData) {
 
   if (schoolError) throw new Error(schoolError.message);
   if (!school) throw new Error("School not found.");
+  if (!canSubmitInitialAssessment(school.pipeline_stage)) {
+    throw new Error(initialAssessmentStageMessage);
+  }
 
   const now = new Date().toISOString();
   const visitDate = optionalString(formData, "visit_date") ?? now.slice(0, 10);
@@ -780,18 +787,16 @@ export async function submitInitialAssessment(formData: FormData) {
     actor.id
   );
 
-  if (["identified", "assessed"].includes(String(school.pipeline_stage))) {
-    const { error: statusError } = await supabase
-      .from("schools")
-      .update({
-        pipeline_stage: "assessed",
-        selection_outcome: "pending",
-        updated_by: actor.id
-      })
-      .eq("id", schoolId);
+  const { error: statusError } = await supabase
+    .from("schools")
+    .update({
+      pipeline_stage: "assessed",
+      selection_outcome: "pending",
+      updated_by: actor.id
+    })
+    .eq("id", schoolId);
 
-    if (statusError) throw new Error(statusError.message);
-  }
+  if (statusError) throw new Error(statusError.message);
 
   await supabase.from("audit_events").insert({
     actor_id: actor.id,
