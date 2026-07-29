@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   const response = await fetch(url, {
     headers: {
       "Accept-Language": language,
-      "User-Agent": "lily-charities-operations/0.1"
+      "User-Agent": "LilyCharitiesOperations/1.0 (+https://lily-charities-web.vercel.app)"
     },
     next: { revalidate: 60 * 60 * 24 * 30 }
   });

@@ -27,6 +27,7 @@ export type SchoolSummary = {
   district: string | null;
   latitude: number | null;
   longitude: number | null;
+  map_pin_source: string | null;
   needs_map_pin_cleanup: boolean;
   pipeline_stage: PipelineStage;
   donor_id: string | null;

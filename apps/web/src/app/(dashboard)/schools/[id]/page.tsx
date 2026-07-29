@@ -303,6 +303,19 @@ function LocationSummary({ school }: { school: SchoolDetail }) {
           </>
         )}
       </div>
+      {hasMapPin && school.map_pin_source === "OpenStreetMap Nominatim" ? (
+        <p className="mt-2 text-xs text-slate-500">
+          Coordinates ©{" "}
+          <a
+            href="https://www.openstreetmap.org/copyright"
+            target="_blank"
+            rel="noreferrer"
+            className="underline hover:text-slate-700"
+          >
+            OpenStreetMap contributors
+          </a>
+        </p>
+      ) : null}
     </section>
   );
 }
