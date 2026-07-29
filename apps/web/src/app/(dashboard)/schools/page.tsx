@@ -110,6 +110,7 @@ export default async function SchoolsPage({
             <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-3 py-2">No.</th>
+                <th className="px-3 py-2">Library ID</th>
                 <th className="px-3 py-2">School</th>
                 <th className="px-3 py-2">Contact</th>
                 <th className="px-3 py-2">Status</th>

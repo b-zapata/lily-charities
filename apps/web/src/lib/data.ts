@@ -138,7 +138,7 @@ export async function getSchool(id: string) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return null;
 
-  const [schoolResult, agreementResult] = await Promise.all([
+  const [schoolResult, agreementResult, libraryResult] = await Promise.all([
     supabase
       .from("school_detail_view")
       .select("*")
@@ -151,6 +151,12 @@ export async function getSchool(id: string) {
       .is("deleted_at", null)
       .order("created_at", { ascending: false })
       .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("schools")
+      .select("library_id")
+      .eq("id", id)
+      .is("deleted_at", null)
       .maybeSingle()
   ]);
 
@@ -162,6 +168,9 @@ export async function getSchool(id: string) {
   if (agreementResult.error) {
     console.error(agreementResult.error);
   }
+  if (libraryResult.error) {
+    console.error(libraryResult.error);
+  }
 
   const school = schoolResult.data as SchoolDetail | null;
   if (!school) return null;
@@ -172,6 +181,7 @@ export async function getSchool(id: string) {
 
   return {
     ...school,
+    library_id: libraryResult.data?.library_id ?? null,
     agreement,
     agreement_id: agreement?.id ?? null,
     agreement_approved_at: agreement?.approved_at ?? null

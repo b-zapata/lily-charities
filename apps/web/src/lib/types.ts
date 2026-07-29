@@ -19,6 +19,7 @@ export type ChangeRequestStatus =
 export type SchoolSummary = {
   id: string;
   school_number: string;
+  library_id: string | null;
   name: string;
   name_english: string | null;
   name_bangla: string | null;

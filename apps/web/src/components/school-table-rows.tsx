@@ -35,6 +35,9 @@ export function SchoolTableRows({ schools }: { schools: SchoolSummary[] }) {
                 {school.school_number}
               </Link>
             </td>
+            <td className="whitespace-nowrap px-3 py-2 text-slate-600">
+              {school.library_id ?? <span className="text-slate-400">Not assigned</span>}
+            </td>
             <td className="px-3 py-2">
               <Link href={href} className="font-medium text-slate-900" onClick={(event) => event.stopPropagation()}>
                 {school.name_english ?? school.name}

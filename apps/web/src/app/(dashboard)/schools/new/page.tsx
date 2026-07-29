@@ -1,7 +1,8 @@
-import { MapPin, Plus } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { createSchool } from "@/app/actions";
 import { ConfigWarning } from "@/components/config-warning";
 import { MapPinPicker } from "@/components/map-pin-picker";
+import { SchoolCreationForm } from "@/components/school-creation-form";
 import { getCurrentUser } from "@/lib/data";
 
 export default async function NewSchoolPage() {
@@ -20,7 +21,8 @@ export default async function NewSchoolPage() {
       </div>
       <ConfigWarning />
 
-      <form action={createSchool} className="overflow-hidden rounded-md border border-slate-200 bg-white">
+      <SchoolCreationForm action={createSchool} isVolunteer={isVolunteer}>
+        <input type="hidden" name="creation_submission_id" value={crypto.randomUUID()} />
         <FormSection
           title="School identity"
           description="Use the official school names. The Lily school number is generated after creation."
@@ -49,13 +51,7 @@ export default async function NewSchoolPage() {
           <MapPinPicker addressInputName="address" showMapAddressButton={false} />
         </FormSection>
 
-        <div className="border-t border-slate-200 bg-slate-50 px-4 py-3">
-          <button className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800">
-            <Plus className="h-4 w-4" />
-            {isVolunteer ? "Submit for approval" : "Create school"}
-          </button>
-        </div>
-      </form>
+      </SchoolCreationForm>
     </div>
   );
 }

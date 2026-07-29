@@ -37,6 +37,14 @@ function requiredString(formData: FormData, key: string) {
   return value;
 }
 
+function requiredUuid(formData: FormData, key: string) {
+  const value = requiredString(formData, key);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error(`${key} is not valid`);
+  }
+  return value;
+}
+
 function optionalString(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
   return value || null;
@@ -487,6 +495,8 @@ export async function createSchool(formData: FormData) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) redirect("/schools/new?error=config");
   const actor = await requireActiveProfile(supabase);
+  const creationSubmissionId = requiredUuid(formData, "creation_submission_id");
+  const clientMutationId = `web-${creationSubmissionId}`;
 
   const latitude = optionalCoordinate(formData, "latitude", -90, 90);
   const longitude = optionalCoordinate(formData, "longitude", -180, 180);
@@ -514,6 +524,15 @@ export async function createSchool(formData: FormData) {
   };
 
   if (actor.role === "volunteer") {
+    const { data: existingRequest, error: existingRequestError } = await supabase
+      .from("change_requests")
+      .select("id")
+      .eq("submitted_by", actor.id)
+      .eq("client_mutation_id", clientMutationId)
+      .maybeSingle();
+    if (existingRequestError) throw new Error(existingRequestError.message);
+    if (existingRequest) redirect("/schools?submitted=new_school");
+
     const { error } = await supabase.from("change_requests").insert({
       request_type: "new_school",
       status: "pending_review",
@@ -522,15 +541,26 @@ export async function createSchool(formData: FormData) {
       proposed_data: {
         school: schoolPayload
       },
-      client_mutation_id: `web-${crypto.randomUUID()}`,
+      client_mutation_id: clientMutationId,
       client_created_at: new Date().toISOString()
     });
 
+    if (error?.code === "23505") redirect("/schools?submitted=new_school");
     if (error) throw new Error(error.message);
     revalidatePath("/schools");
     revalidatePath("/approvals");
     redirect("/schools?submitted=new_school");
   }
+
+  const { data: existingSchool, error: existingSchoolError } = await supabase
+    .from("schools")
+    .select("id")
+    .eq("creation_submission_id", creationSubmissionId)
+    .eq("created_by", actor.id)
+    .is("deleted_at", null)
+    .maybeSingle();
+  if (existingSchoolError) throw new Error(existingSchoolError.message);
+  if (existingSchool) redirect(`/schools/${existingSchool.id}/created`);
 
   const { data: generatedNumber, error: numberError } = await supabase.rpc("generate_school_number");
   if (numberError) throw new Error(numberError.message);
@@ -553,12 +583,24 @@ export async function createSchool(formData: FormData) {
       pipeline_stage: schoolStatus,
       selection_outcome: legacySelectionOutcomeForStatus(schoolStatus),
       created_source: "manager",
+      creation_submission_id: creationSubmissionId,
       created_by: actor.id,
       updated_by: actor.id
     })
     .select("id")
     .single();
 
+  if (error?.code === "23505") {
+    const { data: duplicateSchool, error: duplicateSchoolError } = await supabase
+      .from("schools")
+      .select("id")
+      .eq("creation_submission_id", creationSubmissionId)
+      .eq("created_by", actor.id)
+      .is("deleted_at", null)
+      .maybeSingle();
+    if (duplicateSchoolError) throw new Error(duplicateSchoolError.message);
+    if (duplicateSchool) redirect(`/schools/${duplicateSchool.id}/created`);
+  }
   if (error) throw new Error(error.message);
 
   await supabase.from("audit_events").insert({

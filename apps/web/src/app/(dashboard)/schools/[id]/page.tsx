@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarClock, ClipboardCheck, Edit, ImageIcon, MapPin } from "lucide-react";
+import { CalendarClock, ClipboardCheck, Edit, ExternalLink, ImageIcon, MapPin } from "lucide-react";
 import { StatusBadge } from "@/components/status-badge";
 import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
 import { requiredAssessmentPhotos } from "@/lib/assessment-photos";
@@ -182,6 +182,13 @@ function StatusSummary({ school }: { school: SchoolDetail }) {
       <div className="mt-3">
         <StatusBadge value={school.pipeline_stage} />
       </div>
+      <dl className="mt-4 border-t border-slate-100 pt-3 text-sm">
+        <Info
+          label="Library ID"
+          value={school.library_id}
+          emptyText="Assigned when the school becomes operational"
+        />
+      </dl>
       {school.pending_approvals_count > 0 ? (
         <p className="mt-3 text-sm text-slate-500">
           {school.pending_approvals_count} pending approval{school.pending_approvals_count === 1 ? "" : "s"}
@@ -240,12 +247,33 @@ function ContactsSummary({ school }: { school: SchoolDetail }) {
 function LocationSummary({ school }: { school: SchoolDetail }) {
   const hasMapPin =
     !school.needs_map_pin_cleanup && school.latitude !== null && school.longitude !== null;
+  const mapsUrl = school.address
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.address)}`
+    : null;
 
   return (
     <section className="rounded-md border border-slate-200 bg-white p-4">
       <h2 className="font-semibold text-slate-950">Location</h2>
       <dl className="mt-3 text-sm">
-        <Info label="Address" value={school.address} />
+        <div>
+          <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Address</dt>
+          <dd className="mt-1 text-slate-900">
+            {mapsUrl ? (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-start gap-1.5 text-red-700 hover:text-red-800 hover:underline"
+              >
+                <span>{school.address}</span>
+                <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="sr-only">Open address in Google Maps</span>
+              </a>
+            ) : (
+              "Missing"
+            )}
+          </dd>
+        </div>
       </dl>
       <div
         className={[

@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const columns: Array<[string, string]> = [
   ["school_number", "School Number"],
+  ["library_id", "Library ID"],
   ["name_english", "School Name in English"],
   ["name_bangla", "School Name in Bangla"],
   ["address", "Address"],
