@@ -247,8 +247,11 @@ function ContactsSummary({ school }: { school: SchoolDetail }) {
 function LocationSummary({ school }: { school: SchoolDetail }) {
   const hasMapPin =
     !school.needs_map_pin_cleanup && school.latitude !== null && school.longitude !== null;
-  const mapsUrl = school.address
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.address)}`
+  const mapsQuery = hasMapPin
+    ? `${school.latitude},${school.longitude}`
+    : school.address;
+  const mapsUrl = mapsQuery
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`
     : null;
 
   return (
@@ -281,8 +284,24 @@ function LocationSummary({ school }: { school: SchoolDetail }) {
           hasMapPin ? "text-emerald-700" : "text-amber-700"
         ].join(" ")}
       >
-        <MapPin className="h-4 w-4" />
-        {hasMapPin ? "Map pin created" : "Map pin not created"}
+        {hasMapPin && mapsUrl ? (
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 hover:text-emerald-800 hover:underline"
+          >
+            <MapPin className="h-4 w-4" />
+            <span>Map pin created</span>
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+            <span className="sr-only">Open map pin in Google Maps</span>
+          </a>
+        ) : (
+          <>
+            <MapPin className="h-4 w-4" />
+            <span>Map pin not created</span>
+          </>
+        )}
       </div>
     </section>
   );
