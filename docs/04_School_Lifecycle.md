@@ -34,7 +34,9 @@ pipeline_stage = identified
 
 Volunteer-created basic school proposals use the same default when approved.
 
-When a volunteer submits the initial assessment for review, the visible lifecycle state should become:
+An initial assessment may be submitted only while a school is `identified` or
+`not_selected`. When the assessment is submitted for review, the visible lifecycle
+state should become:
 
 ```text
 pipeline_stage = assessed
@@ -76,7 +78,23 @@ selected
     -> operational
 ```
 
-Managers should be allowed to correct statuses when data cleanup requires it.
+Admins may override the normal transition rules when data cleanup requires it.
+
+## Status Permissions
+
+| Role | Direct or proposed statuses |
+| --- | --- |
+| Administrator | Any status. |
+| Manager | Any status except `assessed`. |
+| Volunteer | May propose `identified`, `setup_in_progress`, `training`, or `operational`. |
+
+Unavailable statuses should remain visible but disabled in status controls.
+
+For managers and volunteers, `assessed` is not a manually selectable status. It is
+set only by submitting an initial assessment from `identified` or `not_selected`.
+Volunteers also cannot propose `selected` or `not_selected`; those statuses are
+manager decisions made during assessment review. Administrators retain an explicit
+override and may select any status.
 
 Volunteer status updates should be submitted as change requests.
 
@@ -84,7 +102,7 @@ Volunteer status updates should be submitted as change requests.
 
 Managers can:
 
-- Set school status.
+- Set any school status except `assessed`.
 - Correct mistakes.
 - Add notes explaining status changes.
 - Review volunteer-proposed status updates.
@@ -96,7 +114,7 @@ Every official lifecycle/status change should create an audit event.
 Volunteers can:
 
 - Submit an initial assessment for manager review.
-- Propose school status changes for manager review.
+- Propose allowed school status changes for manager review.
 - Add notes/photos supporting a status change if the app exposes that action.
 
 Volunteers cannot directly update official status fields.

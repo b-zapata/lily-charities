@@ -14,6 +14,11 @@ import {
   initialAssessmentStageMessage
 } from "@/lib/initial-assessment";
 import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import {
+  canChooseSchoolStatus,
+  isPipelineStage,
+  schoolStatusPermissionMessage
+} from "@/lib/school-status";
 import type { AssessmentField } from "@/lib/assessment-fields";
 
 type SupabaseServerClient = NonNullable<Awaited<ReturnType<typeof createSupabaseServerClient>>>;
@@ -23,15 +28,6 @@ const contactRoles = ["principal", "lead_teacher", "local_liaison"] as const;
 const assessmentFields = assessmentSections.flatMap((section) => section.fields);
 const studentGradeCountFields = assessmentGradeCountFields.filter((grade) => grade.key !== "total");
 const allowedAssessmentImageTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-const pipelineStages = [
-  "identified",
-  "assessed",
-  "selected",
-  "not_selected",
-  "setup_in_progress",
-  "training",
-  "operational"
-] as const;
 const maxFailedLoginAttempts = 3;
 const loginLockoutMinutes = 15;
 
@@ -187,9 +183,9 @@ function optionalCoordinate(formData: FormData, key: string, min: number, max: n
   return numberValue;
 }
 
-function readPipelineStage(formData: FormData) {
-  const value = optionalString(formData, "pipeline_stage") ?? "identified";
-  if (!pipelineStages.includes(value as (typeof pipelineStages)[number])) {
+function readPipelineStage(formData: FormData, fallback: unknown) {
+  const value = optionalString(formData, "pipeline_stage") ?? fallback;
+  if (!isPipelineStage(value)) {
     throw new Error("pipeline_stage is not valid");
   }
 
@@ -824,6 +820,24 @@ export async function updateSchool(formData: FormData) {
   const actor = await requireActiveProfile(supabase);
 
   const id = requiredString(formData, "id");
+  const { data: beforeData, error: beforeDataError } = await supabase
+    .from("schools")
+    .select("*")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (beforeDataError) throw new Error(beforeDataError.message);
+  if (!beforeData) throw new Error("School not found.");
+
+  const schoolStatus = readPipelineStage(formData, beforeData.pipeline_stage);
+  if (
+    schoolStatus !== beforeData.pipeline_stage &&
+    !canChooseSchoolStatus(actor.role as UserRole, schoolStatus)
+  ) {
+    throw new Error(schoolStatusPermissionMessage(actor.role as UserRole));
+  }
+
   const latitude = optionalCoordinate(formData, "latitude", -90, 90);
   const longitude = optionalCoordinate(formData, "longitude", -180, 180);
   if ((latitude === null) !== (longitude === null)) {
@@ -832,7 +846,6 @@ export async function updateSchool(formData: FormData) {
 
   const hasConfirmedPin = latitude !== null && longitude !== null;
   const nameEnglish = requiredString(formData, "name_english");
-  const schoolStatus = readPipelineStage(formData);
   const schoolPatch = {
     name: nameEnglish,
     name_english: nameEnglish,
@@ -847,12 +860,6 @@ export async function updateSchool(formData: FormData) {
     pipeline_stage: schoolStatus,
     selection_outcome: legacySelectionOutcomeForStatus(schoolStatus)
   };
-
-  const { data: beforeData } = await supabase
-    .from("schools")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
 
   if (actor.role === "volunteer") {
     const contacts = readContactPatches(formData);
@@ -1364,7 +1371,7 @@ export async function reviewChangeRequest(formData: FormData) {
 
   const { data: requestRow, error: requestError } = await supabase
     .from("change_requests")
-    .select("request_type, school_id")
+    .select("request_type, school_id, proposed_data, before_data, submitted_by")
     .eq("id", id)
     .maybeSingle();
 
@@ -1386,6 +1393,13 @@ export async function reviewChangeRequest(formData: FormData) {
     }
     if (requestedStatus === "rejected" && !reviewNotes) {
       throw new Error("Feedback is required when denying changes.");
+    }
+    if (requestedStatus === "approved") {
+      await assertChangeRequestStatusAllowed(
+        supabase,
+        actor.role as UserRole,
+        requestRow
+      );
     }
   }
 
@@ -1435,6 +1449,36 @@ export async function reviewChangeRequest(formData: FormData) {
   }
   revalidatePath("/approvals");
   redirect("/approvals");
+}
+
+async function assertChangeRequestStatusAllowed(
+  supabase: SupabaseServerClient,
+  reviewerRole: UserRole,
+  request: {
+    proposed_data: unknown;
+    before_data: unknown;
+    submitted_by: string;
+  }
+) {
+  const proposed = schoolPatchFromChangeRequest(request.proposed_data);
+  if (!isPipelineStage(proposed.pipeline_stage)) return;
+
+  const before = schoolPatchFromChangeRequest(request.before_data);
+  if (proposed.pipeline_stage === before.pipeline_stage) return;
+
+  const submitter = await getTargetProfile(supabase, request.submitted_by);
+  if (!canChooseSchoolStatus(submitter.role, proposed.pipeline_stage)) {
+    throw new Error(schoolStatusPermissionMessage(submitter.role));
+  }
+  if (!canChooseSchoolStatus(reviewerRole, proposed.pipeline_stage)) {
+    throw new Error(schoolStatusPermissionMessage(reviewerRole));
+  }
+}
+
+function schoolPatchFromChangeRequest(value: unknown) {
+  const record = asRecord(value);
+  const school = asRecord(record.school);
+  return Object.keys(school).length > 0 ? school : record;
 }
 
 function asRecord(value: unknown) {

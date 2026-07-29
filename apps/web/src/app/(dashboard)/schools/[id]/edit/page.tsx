@@ -4,17 +4,8 @@ import { updateSchool } from "@/app/actions";
 import { MapPinPicker } from "@/components/map-pin-picker";
 import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
 import { getCurrentUser, getSchool } from "@/lib/data";
+import { canChooseSchoolStatus, schoolStatusOptions } from "@/lib/school-status";
 import type { AssessmentField } from "@/lib/assessment-fields";
-
-const pipelineOptions = [
-  { value: "identified", label: "Identified" },
-  { value: "assessed", label: "Assessed" },
-  { value: "selected", label: "Selected" },
-  { value: "not_selected", label: "Not selected" },
-  { value: "setup_in_progress", label: "Setup in progress" },
-  { value: "training", label: "Training" },
-  { value: "operational", label: "Operational" }
-];
 
 export default async function EditSchoolPage({
   params
@@ -32,6 +23,10 @@ export default async function EditSchoolPage({
   const hasMapPin = school.latitude !== null && school.longitude !== null;
   const assessment = asRecord(school.assessment);
   const gradeCounts = getGradeCountMap(school.assessment_grade_counts, assessment);
+  const pipelineOptions = schoolStatusOptions.map((option) => ({
+    ...option,
+    disabled: !canChooseSchoolStatus(user?.role, option.value)
+  }));
 
   return (
     <div className="max-w-5xl space-y-4">
@@ -339,7 +334,7 @@ function SelectField({
   label: string;
   name: string;
   defaultValue: string;
-  options: Array<{ value: string; label: string }>;
+  options: Array<{ value: string; label: string; disabled?: boolean }>;
 }) {
   return (
     <label>
@@ -350,7 +345,7 @@ function SelectField({
         className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
       >
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option key={option.value} value={option.value} disabled={option.disabled}>
             {option.label}
           </option>
         ))}
