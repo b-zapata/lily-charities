@@ -38,10 +38,10 @@ export function canChooseSchoolStatus(
 
 export function schoolStatusPermissionMessage(role: SchoolStatusRole) {
   if (role === "manager") {
-    return "Managers cannot change a school to assessed. Complete an initial assessment instead.";
+    return "Assessed is unavailable as a manual status. Submit an initial assessment to move a school there.";
   }
   if (role === "volunteer") {
-    return "Volunteers cannot propose assessed, selected, or not selected status.";
+    return "Assessed, Selected, and Not selected are unavailable for volunteer proposals.";
   }
   return "This status change is not allowed.";
 }

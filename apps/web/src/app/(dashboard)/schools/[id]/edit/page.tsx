@@ -4,7 +4,11 @@ import { updateSchool } from "@/app/actions";
 import { MapPinPicker } from "@/components/map-pin-picker";
 import { assessmentGradeCountFields, assessmentSections } from "@/lib/assessment-fields";
 import { getCurrentUser, getSchool } from "@/lib/data";
-import { canChooseSchoolStatus, schoolStatusOptions } from "@/lib/school-status";
+import {
+  canChooseSchoolStatus,
+  schoolStatusOptions,
+  schoolStatusPermissionMessage
+} from "@/lib/school-status";
 import type { AssessmentField } from "@/lib/assessment-fields";
 
 export default async function EditSchoolPage({
@@ -27,6 +31,8 @@ export default async function EditSchoolPage({
     ...option,
     disabled: !canChooseSchoolStatus(user?.role, option.value)
   }));
+  const statusRestrictionMessage =
+    user && user.role !== "admin" ? schoolStatusPermissionMessage(user.role) : undefined;
 
   return (
     <div className="max-w-5xl space-y-4">
@@ -61,6 +67,7 @@ export default async function EditSchoolPage({
             name="pipeline_stage"
             defaultValue={school.pipeline_stage}
             options={pipelineOptions}
+            restrictionMessage={statusRestrictionMessage}
           />
         </FormSection>
 
@@ -329,27 +336,38 @@ function SelectField({
   label,
   name,
   defaultValue,
-  options
+  options,
+  restrictionMessage
 }: {
   label: string;
   name: string;
   defaultValue: string;
   options: Array<{ value: string; label: string; disabled?: boolean }>;
+  restrictionMessage?: string;
 }) {
+  const restrictionId = restrictionMessage ? `${name}-restriction` : undefined;
+
   return (
     <label>
       <span className="text-sm font-medium text-slate-700">{label}</span>
       <select
         name={name}
         defaultValue={defaultValue}
+        aria-describedby={restrictionId}
         className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value} disabled={option.disabled}>
             {option.label}
+            {option.disabled ? " (Unavailable)" : ""}
           </option>
         ))}
       </select>
+      {restrictionMessage ? (
+        <span id={restrictionId} className="mt-1.5 block text-sm font-medium text-red-700">
+          {restrictionMessage}
+        </span>
+      ) : null}
     </label>
   );
 }
