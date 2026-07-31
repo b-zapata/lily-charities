@@ -44,6 +44,7 @@ export function MapPinPicker({
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [geocodeLanguage, setGeocodeLanguage] = useState("en");
   const lastGeocodedAddressRef = useRef<string | null>(null);
+  const pendingGeocodedAddressRef = useRef<string | null>(null);
 
   const applyPin = useCallback((
     nextLatitude: number,
@@ -128,9 +129,19 @@ export function MapPinPicker({
     forceLookup = false
   ) => {
     const trimmedAddress = address.trim();
-    if (!trimmedAddress || (!forceLookup && lastGeocodedAddressRef.current === trimmedAddress)) return;
+    if (
+      !trimmedAddress
+      || (
+        !forceLookup
+        && (
+          lastGeocodedAddressRef.current === trimmedAddress
+          || pendingGeocodedAddressRef.current === trimmedAddress
+        )
+      )
+    ) return;
     if (!shouldOverwriteExistingPin && latitude !== null && longitude !== null) return;
 
+    pendingGeocodedAddressRef.current = trimmedAddress;
     setIsGeocoding(true);
     setMessage(null);
     try {
@@ -154,6 +165,9 @@ export function MapPinPicker({
     } catch {
       setMessage("Could not map this address. Drop the pin manually.");
     } finally {
+      if (pendingGeocodedAddressRef.current === trimmedAddress) {
+        pendingGeocodedAddressRef.current = null;
+      }
       setIsGeocoding(false);
     }
   }, [applyPin, geocodeLanguage, latitude, longitude]);
