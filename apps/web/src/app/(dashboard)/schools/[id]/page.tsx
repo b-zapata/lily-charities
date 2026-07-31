@@ -245,8 +245,16 @@ function ContactsSummary({ school }: { school: SchoolDetail }) {
 }
 
 function LocationSummary({ school }: { school: SchoolDetail }) {
-  const hasMapPin =
-    !school.needs_map_pin_cleanup && school.latitude !== null && school.longitude !== null;
+  const hasMapPin = school.latitude !== null && school.longitude !== null;
+  const mapPinQuality =
+    school.data_quality_flags?.map_pin &&
+    typeof school.data_quality_flags.map_pin === "object" &&
+    !Array.isArray(school.data_quality_flags.map_pin)
+      ? school.data_quality_flags.map_pin as Record<string, unknown>
+      : null;
+  const needsMapPinConfirmation =
+    hasMapPin &&
+    (school.needs_map_pin_cleanup || mapPinQuality?.needs_confirmation === true);
   const mapsQuery = hasMapPin
     ? `${school.latitude},${school.longitude}`
     : school.address;
@@ -281,7 +289,7 @@ function LocationSummary({ school }: { school: SchoolDetail }) {
       <div
         className={[
           "mt-4 flex items-center gap-2 border-t border-slate-100 pt-3 text-sm font-medium",
-          hasMapPin ? "text-emerald-700" : "text-amber-700"
+          hasMapPin && !needsMapPinConfirmation ? "text-emerald-700" : "text-amber-700"
         ].join(" ")}
       >
         {hasMapPin && mapsUrl ? (
@@ -289,10 +297,14 @@ function LocationSummary({ school }: { school: SchoolDetail }) {
             href={mapsUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 hover:text-emerald-800 hover:underline"
+            className="inline-flex items-center gap-2 hover:underline"
           >
             <MapPin className="h-4 w-4" />
-            <span>Map pin created</span>
+            <span>
+              {needsMapPinConfirmation
+                ? "Approximate map pin created - confirmation needed"
+                : "Map pin created"}
+            </span>
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
             <span className="sr-only">Open map pin in Google Maps</span>
           </a>

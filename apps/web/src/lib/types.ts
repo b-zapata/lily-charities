@@ -44,6 +44,7 @@ export type SchoolSummary = {
 };
 
 export type SchoolDetail = SchoolSummary & {
+  data_quality_flags?: Record<string, unknown> | null;
   contacts?: Array<{
     id: string;
     role: string;
