@@ -491,66 +491,11 @@ export async function updateAdminUserPassword(formData: FormData) {
   redirect(`/users/${userId}?updated=password`);
 }
 
-export async function createSchool(formData: FormData) {
+export async function createSchoolWithInitialAssessment(formData: FormData) {
   const supabase = await createSupabaseServerClient();
-  if (!supabase) redirect("/schools/new?error=config");
-  const actor = await requireActiveProfile(supabase);
+  if (!supabase) throw new Error("Supabase is not configured");
+  const actor = await requireManagerProfile(supabase);
   const creationSubmissionId = requiredUuid(formData, "creation_submission_id");
-  const clientMutationId = `web-${creationSubmissionId}`;
-
-  const latitude = optionalCoordinate(formData, "latitude", -90, 90);
-  const longitude = optionalCoordinate(formData, "longitude", -180, 180);
-  if ((latitude === null) !== (longitude === null)) {
-    throw new Error("Both latitude and longitude are required when adding a map pin.");
-  }
-
-  const hasMapPin = latitude !== null && longitude !== null;
-  const nameEnglish = requiredString(formData, "name_english");
-  const nameBangla = requiredString(formData, "name_bangla");
-  const address = requiredString(formData, "address");
-  const schoolStatus = "identified";
-  const schoolPayload = {
-    name: nameEnglish,
-    name_english: nameEnglish,
-    name_bangla: nameBangla,
-    address,
-    district: optionalString(formData, "district"),
-    latitude,
-    longitude,
-    needs_map_pin_cleanup: !hasMapPin,
-    map_pin_source: hasMapPin ? optionalString(formData, "map_pin_source") ?? "manual" : null,
-    pipeline_stage: schoolStatus,
-    selection_outcome: legacySelectionOutcomeForStatus(schoolStatus)
-  };
-
-  if (actor.role === "volunteer") {
-    const { data: existingRequest, error: existingRequestError } = await supabase
-      .from("change_requests")
-      .select("id")
-      .eq("submitted_by", actor.id)
-      .eq("client_mutation_id", clientMutationId)
-      .maybeSingle();
-    if (existingRequestError) throw new Error(existingRequestError.message);
-    if (existingRequest) redirect("/schools?submitted=new_school");
-
-    const { error } = await supabase.from("change_requests").insert({
-      request_type: "new_school",
-      status: "pending_review",
-      submitted_by: actor.id,
-      submitted_at: new Date().toISOString(),
-      proposed_data: {
-        school: schoolPayload
-      },
-      client_mutation_id: clientMutationId,
-      client_created_at: new Date().toISOString()
-    });
-
-    if (error?.code === "23505") redirect("/schools?submitted=new_school");
-    if (error) throw new Error(error.message);
-    revalidatePath("/schools");
-    revalidatePath("/approvals");
-    redirect("/schools?submitted=new_school");
-  }
 
   const { data: existingSchool, error: existingSchoolError } = await supabase
     .from("schools")
@@ -560,71 +505,154 @@ export async function createSchool(formData: FormData) {
     .is("deleted_at", null)
     .maybeSingle();
   if (existingSchoolError) throw new Error(existingSchoolError.message);
-  if (existingSchool) redirect(`/schools/${existingSchool.id}/created`);
+  if (existingSchool) redirect(`/schools/${existingSchool.id}?submitted=assessment&created=school`);
 
-  const { data: generatedNumber, error: numberError } = await supabase.rpc("generate_school_number");
-  if (numberError) throw new Error(numberError.message);
-
-  const { data, error } = await supabase
-    .from("schools")
-    .insert({
-      school_number: generatedNumber,
-      name: nameEnglish,
-      name_english: nameEnglish,
-      name_bangla: nameBangla,
-      address,
-      district: optionalString(formData, "district"),
-      latitude,
-      longitude,
-      needs_map_pin_cleanup: !hasMapPin,
-      map_pin_source: hasMapPin ? optionalString(formData, "map_pin_source") ?? "manual" : null,
-      map_pin_confirmed_at: hasMapPin ? new Date().toISOString() : null,
-      map_pin_confirmed_by: hasMapPin ? actor.id : null,
-      pipeline_stage: schoolStatus,
-      selection_outcome: legacySelectionOutcomeForStatus(schoolStatus),
-      created_source: "manager",
-      creation_submission_id: creationSubmissionId,
-      created_by: actor.id,
-      updated_by: actor.id
-    })
-    .select("id")
-    .single();
-
-  if (error?.code === "23505") {
-    const { data: duplicateSchool, error: duplicateSchoolError } = await supabase
-      .from("schools")
-      .select("id")
-      .eq("creation_submission_id", creationSubmissionId)
-      .eq("created_by", actor.id)
-      .is("deleted_at", null)
-      .maybeSingle();
-    if (duplicateSchoolError) throw new Error(duplicateSchoolError.message);
-    if (duplicateSchool) redirect(`/schools/${duplicateSchool.id}/created`);
+  const latitude = optionalCoordinate(formData, "latitude", -90, 90);
+  const longitude = optionalCoordinate(formData, "longitude", -180, 180);
+  if ((latitude === null) !== (longitude === null)) {
+    throw new Error("Both latitude and longitude are required when adding a map pin.");
   }
-  if (error) throw new Error(error.message);
 
-  await supabase.from("audit_events").insert({
-    actor_id: actor.id,
-    event_type: "school_created",
-    entity_type: "school",
-    entity_id: data.id,
-    school_id: data.id,
-    after_data: {
-      school_number: generatedNumber,
-      name: nameEnglish,
-      name_english: nameEnglish,
-      name_bangla: nameBangla,
-      address,
-      district: optionalString(formData, "district"),
-      latitude,
-      longitude,
-      needs_map_pin_cleanup: !hasMapPin,
-      pipeline_stage: schoolStatus
-    },
-    metadata: { source: "manager_dashboard" }
+  const now = new Date().toISOString();
+  const visitDate = optionalString(formData, "visit_date") ?? now.slice(0, 10);
+  const nameEnglish = requiredString(formData, "name_english");
+  const nameBangla = requiredString(formData, "name_bangla");
+  const address = requiredString(formData, "address");
+  const district = optionalString(formData, "district");
+  const principalName = requiredString(formData, "principal_name");
+  const principalPhone = requiredString(formData, "principal_phone");
+  const principalEmail = optionalString(formData, "principal_email");
+  const principalTitle = optionalString(formData, "principal_title") ?? "Principal";
+  const typedSignature = requiredString(formData, "typed_signature");
+  const agreementAccepted = formData.get("school_agreement_accepted") === "on";
+
+  if (!agreementAccepted) {
+    throw new Error("The school agreement must be accepted before creating the school.");
+  }
+
+  const underprivilegedOrLowIncomeArea = requiredBoolean(formData, "assessment_underprivileged_or_low_income_area");
+  const gradeCounts = studentGradeCountFields.map((grade) => ({
+    grade_label: grade.key,
+    student_count: requiredNumber(formData, `assessment_grade_count_${grade.key}`)
+  }));
+  const estimatedTotalStudents = gradeCounts.reduce((total, grade) => total + grade.student_count, 0);
+  const isGoodFitForProject = requiredBoolean(formData, "assessment_is_good_fit_for_project");
+  const additionalComments = optionalString(formData, "assessment_additional_comments");
+  const preparedByName =
+    typeof actor.display_name === "string" && actor.display_name.trim() ? actor.display_name.trim() : null;
+  const hasMapPin = latitude !== null && longitude !== null;
+
+  const agreementSnapshot = {
+    form_version: schoolAgreementVersion,
+    intro: buildSchoolAgreementIntro(nameEnglish, principalName),
+    conditions: schoolAgreementConditions,
+    typed_signature: typedSignature,
+    signed_for_school: nameEnglish,
+    captured_in: "manager_dashboard"
+  };
+  const assessment = {
+    form_version: "initial_assessment_wizard_v1",
+    visit_date: visitDate,
+    prepared_by_user_id: actor.id,
+    prepared_by_name: preparedByName,
+    underprivileged_or_low_income_area: underprivilegedOrLowIncomeArea,
+    commitment_from_school_administration: true,
+    supports_establishing_and_maintaining_library: true,
+    willing_to_participate_in_ambassador_program: true,
+    at_least_200_students: estimatedTotalStudents >= 200,
+    estimated_total_students: estimatedTotalStudents,
+    is_good_fit_for_project: isGoodFitForProject,
+    additional_comments: additionalComments
+  };
+  const allGradeCounts = [
+    ...gradeCounts,
+    { grade_label: "total", student_count: estimatedTotalStudents }
+  ];
+  const rawFormData = {
+    ...assessment,
+    school_agreement: agreementSnapshot,
+    grade_counts: allGradeCounts
+  };
+
+  const photoFiles = readRequiredAssessmentPhotoFiles(formData);
+  const photoRows = [];
+
+  for (const { photoDefinition, file } of photoFiles) {
+    const storagePath = [
+      "pending",
+      "unified-school-assessments",
+      actor.id,
+      creationSubmissionId,
+      `${photoDefinition.key}.${assessmentPhotoExtension(file.type)}`
+    ].join("/");
+
+    const { error: uploadError } = await supabase.storage
+      .from("school-photos")
+      .upload(storagePath, file, {
+        contentType: file.type,
+        upsert: true
+      });
+    if (uploadError) throw new Error(uploadError.message);
+
+    photoRows.push({
+      photo_type: photoDefinition.photoType,
+      storage_bucket: "school-photos",
+      storage_path: storagePath,
+      content_type: file.type,
+      file_size_bytes: file.size,
+      caption: photoDefinition.caption
+    });
+  }
+
+  const { data, error } = await supabase.rpc("create_school_with_initial_assessment", {
+    p_creation_submission_id: creationSubmissionId,
+    p_payload: {
+      school: {
+        name: nameEnglish,
+        name_english: nameEnglish,
+        name_bangla: nameBangla,
+        address,
+        district,
+        latitude,
+        longitude,
+        needs_map_pin_cleanup: !hasMapPin,
+        map_pin_source: hasMapPin ? optionalString(formData, "map_pin_source") ?? "manual" : null
+      },
+      principal: {
+        name: principalName,
+        phone: principalPhone,
+        email: principalEmail,
+        title: principalTitle
+      },
+      agreement: {
+        agreement_date: visitDate,
+        represented_school_name: nameEnglish,
+        signatory_name: principalName,
+        signatory_title: principalTitle,
+        signatory_phone: principalPhone,
+        terms_version: schoolAgreementVersion,
+        terms_text_snapshot: agreementSnapshot
+      },
+      assessment: {
+        ...assessment,
+        raw_form_data: rawFormData
+      },
+      grade_counts: allGradeCounts,
+      photos: photoRows,
+      submitted_at: now
+    }
   });
+
+  if (error) throw new Error(error.message);
+  const result = Array.isArray(data) ? data[0] : data;
+  const schoolId = result?.school_id;
+  if (typeof schoolId !== "string") {
+    throw new Error("The school was created, but its identifier was not returned.");
+  }
+
   revalidatePath("/schools");
-  redirect(`/schools/${data.id}/created`);
+  revalidatePath(`/schools/${schoolId}`);
+  redirect(`/schools/${schoolId}?submitted=assessment&created=school`);
 }
 
 export async function submitInitialAssessment(formData: FormData) {
@@ -1050,20 +1078,7 @@ async function uploadAssessmentPhotos(
 ) {
   const uploadedPhotos: Array<{ id: string }> = [];
 
-  const photoFiles = requiredAssessmentPhotos.map((photoDefinition) => {
-    const file = formData.getAll(`assessment_photo_${photoDefinition.key}`).find(isUploadedFile);
-    if (!file) {
-      throw new Error(`${photoDefinition.label} is required.`);
-    }
-    if (!allowedAssessmentImageTypes.has(file.type)) {
-      throw new Error("Assessment photos must be JPEG, PNG, or WebP images.");
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      throw new Error("Each assessment photo must be 20 MB or smaller.");
-    }
-
-    return { photoDefinition, file };
-  });
+  const photoFiles = readRequiredAssessmentPhotoFiles(formData);
 
   for (const { photoDefinition, file } of photoFiles) {
     const storagePath = [
@@ -1116,6 +1131,30 @@ async function uploadAssessmentPhotos(
   }
 
   return uploadedPhotos;
+}
+
+function readRequiredAssessmentPhotoFiles(formData: FormData) {
+  return requiredAssessmentPhotos.map((photoDefinition) => {
+    const file = formData.getAll(`assessment_photo_${photoDefinition.key}`).find(isUploadedFile);
+    if (!file) {
+      throw new Error(`${photoDefinition.label} is required.`);
+    }
+    if (!allowedAssessmentImageTypes.has(file.type)) {
+      throw new Error("Assessment photos must be JPEG, PNG, or WebP images.");
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      throw new Error("Each assessment photo must be 20 MB or smaller.");
+    }
+
+    return { photoDefinition, file };
+  });
+}
+
+function assessmentPhotoExtension(contentType: string) {
+  if (contentType === "image/jpeg") return "jpg";
+  if (contentType === "image/png") return "png";
+  if (contentType === "image/webp") return "webp";
+  throw new Error("Assessment photos must be JPEG, PNG, or WebP images.");
 }
 
 function isUploadedFile(value: FormDataEntryValue): value is File {

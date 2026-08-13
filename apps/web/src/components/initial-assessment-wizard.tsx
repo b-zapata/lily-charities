@@ -1,23 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
-import { ArrowLeft, ArrowRight, Check, ImagePlus } from "lucide-react";
-import { submitInitialAssessment } from "@/app/actions";
+import { ArrowLeft, ArrowRight, Check, ImagePlus, LoaderCircle, MapPin, Plus } from "lucide-react";
+import { useFormStatus } from "react-dom";
+import { createSchoolWithInitialAssessment, submitInitialAssessment } from "@/app/actions";
 import { assessmentGradeCountFields } from "@/lib/assessment-fields";
 import { requiredAssessmentPhotos } from "@/lib/assessment-photos";
 import { buildSchoolAgreementIntro, schoolAgreementConditions } from "@/lib/school-agreement";
 import { cn } from "@/lib/utils";
+import { MapPinPicker } from "@/components/map-pin-picker";
 
 const steps = ["School Leadership", "Students", "Final Remarks", "Pictures"] as const;
 const gradeFields = assessmentGradeCountFields.filter((grade) => grade.key !== "total");
 
 type InitialAssessmentWizardProps = {
-  school: {
+  mode?: "assessment" | "create";
+  school?: {
     id: string;
     schoolNumber: string;
     name: string;
   };
+  creationSubmissionId?: string;
   principal?: {
     name: string;
     phone: string | null;
@@ -34,13 +38,24 @@ type InitialAssessmentWizardProps = {
 };
 
 export function InitialAssessmentWizard({
+  mode = "assessment",
   school,
+  creationSubmissionId,
   principal,
   today,
   initialAssessment
 }: InitialAssessmentWizardProps) {
+  const isCreating = mode === "create";
+  const submittedRef = useRef(false);
+  const [submitted, setSubmitted] = useState(false);
   const [activeStep, setActiveStep] = useState(0);
   const [attemptedStep, setAttemptedStep] = useState<number | null>(null);
+  const [schoolValues, setSchoolValues] = useState({
+    nameEnglish: school?.name ?? "",
+    nameBangla: "",
+    address: "",
+    district: ""
+  });
   const [leadershipValues, setLeadershipValues] = useState({
     principalName: principal?.name ?? "",
     principalTitle: principal?.title ?? "Principal",
@@ -78,8 +93,11 @@ export function InitialAssessmentWizard({
     [gradeCounts]
   );
 
+  const representedSchoolName = isCreating
+    ? schoolValues.nameEnglish.trim() || "the school"
+    : school?.name ?? "the school";
   const agreementIntro = buildSchoolAgreementIntro(
-    school.name,
+    representedSchoolName,
     leadershipValues.principalName.trim() || "the signer"
   );
   const completionErrors = getStepErrors();
@@ -88,6 +106,13 @@ export function InitialAssessmentWizard({
   function getStepErrors() {
     if (activeStep === 0) {
       const errors = [];
+      if (isCreating && !schoolValues.nameEnglish.trim()) {
+        errors.push("School name in English is required.");
+      }
+      if (isCreating && !schoolValues.nameBangla.trim()) {
+        errors.push("School name in Bangla is required.");
+      }
+      if (isCreating && !schoolValues.address.trim()) errors.push("Address is required.");
       if (!leadershipValues.principalName.trim()) errors.push("Principal / signer name is required.");
       if (!leadershipValues.principalPhone.trim()) errors.push("Phone is required.");
       if (!leadershipValues.typedSignature.trim()) errors.push("Typed signature is required.");
@@ -133,26 +158,42 @@ export function InitialAssessmentWizard({
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    if (!canAdvance) {
+    if (!canAdvance || submittedRef.current) {
       event.preventDefault();
       setAttemptedStep(activeStep);
+      return;
     }
+
+    submittedRef.current = true;
+    setSubmitted(true);
   }
+
+  if (!isCreating && !school) return null;
 
   return (
     <form
-      action={submitInitialAssessment}
+      action={isCreating ? createSchoolWithInitialAssessment : submitInitialAssessment}
       encType="multipart/form-data"
       onSubmit={handleSubmit}
       className="overflow-hidden rounded-md border border-slate-200 bg-white"
     >
-      <input type="hidden" name="school_id" value={school.id} />
+      {isCreating ? (
+        <input type="hidden" name="creation_submission_id" value={creationSubmissionId} />
+      ) : (
+        <input type="hidden" name="school_id" value={school?.id} />
+      )}
       <input type="hidden" name="visit_date" value={today} />
 
       <div className="border-b border-slate-200 p-4">
-        <div className="text-sm font-medium text-red-700">{school.schoolNumber}</div>
-        <h1 className="text-xl font-semibold text-slate-950">Initial Assessment</h1>
-        <p className="mt-1 text-sm text-slate-500">{school.name}</p>
+        {!isCreating ? <div className="text-sm font-medium text-red-700">{school?.schoolNumber}</div> : null}
+        <h1 className="text-xl font-semibold text-slate-950">
+          {isCreating ? "Create School" : "Initial Assessment"}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {isCreating
+            ? "Create the school record and complete its initial assessment in one submission."
+            : school?.name}
+        </p>
       </div>
 
       <div className="grid border-b border-slate-200 bg-slate-50 sm:grid-cols-4">
@@ -191,7 +232,56 @@ export function InitialAssessmentWizard({
           </div>
         ) : null}
 
-        <section className={cn("space-y-5", activeStep !== 0 && "hidden")} aria-label="School leadership">
+        <section className={cn("space-y-5", activeStep !== 0 && "hidden")} aria-label={steps[0]}>
+          {isCreating ? (
+            <>
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">School information</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  The school number is generated automatically when the completed assessment is submitted.
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field
+                  label="School name in English"
+                  name="name_english"
+                  value={schoolValues.nameEnglish}
+                  onChange={(value) => setSchoolValues((current) => ({ ...current, nameEnglish: value }))}
+                  required
+                />
+                <Field
+                  label="School name in Bangla"
+                  name="name_bangla"
+                  value={schoolValues.nameBangla}
+                  onChange={(value) => setSchoolValues((current) => ({ ...current, nameBangla: value }))}
+                  required
+                />
+                <AddressField
+                  value={schoolValues.address}
+                  onChange={(value) => setSchoolValues((current) => ({ ...current, address: value }))}
+                />
+                <Field
+                  label="District"
+                  name="district"
+                  value={schoolValues.district}
+                  onChange={(value) => setSchoolValues((current) => ({ ...current, district: value }))}
+                />
+                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  <MapPin className="h-4 w-4 shrink-0 text-amber-700" />
+                  Schools created without a pin will be flagged for map-pin cleanup.
+                </div>
+                <MapPinPicker addressInputName="address" showMapAddressButton={false} />
+              </div>
+              <div className="border-t border-slate-200" />
+            </>
+          ) : null}
+
+          <div>
+            <h2 className="text-base font-semibold text-slate-950">School agreement</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Record the principal or authorized signer next to the agreement they are accepting.
+            </p>
+          </div>
           <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
             <p className="font-medium text-slate-900">{agreementIntro}</p>
             <ol className="mt-3 list-decimal space-y-2 pl-5">
@@ -280,6 +370,7 @@ export function InitialAssessmentWizard({
                     name={`assessment_grade_count_${grade.key}`}
                     type="number"
                     min={0}
+                    required
                     value={gradeCounts[grade.key] ?? ""}
                     onChange={(event) =>
                       setGradeCounts((current) => ({
@@ -303,7 +394,7 @@ export function InitialAssessmentWizard({
             onChange={setRecommendationValue}
           />
           <label className="block">
-            <span className="text-sm font-medium text-slate-700">Notes by the person submitting this form</span>
+            <span className="text-sm font-medium text-slate-700">Final comments</span>
             <textarea
               name="assessment_additional_comments"
               rows={5}
@@ -326,6 +417,7 @@ export function InitialAssessmentWizard({
                 name={`assessment_photo_${photo.key}`}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
+                required
                 onChange={(event) =>
                   setPhotoUploads((current) => ({
                     ...current,
@@ -346,7 +438,7 @@ export function InitialAssessmentWizard({
             setActiveStep((step) => Math.max(0, step - 1));
             setAttemptedStep(null);
           }}
-          disabled={activeStep === 0}
+          disabled={activeStep === 0 || submitted}
           className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -356,19 +448,14 @@ export function InitialAssessmentWizard({
           <button
             type="button"
             onClick={() => goToStep(activeStep + 1)}
-            className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
+            disabled={submitted}
+            className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:cursor-wait disabled:bg-red-400"
           >
             Next
             <ArrowRight className="h-4 w-4" />
           </button>
         ) : (
-          <button
-            type="submit"
-            className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
-          >
-            <Check className="h-4 w-4" />
-            Submit assessment
-          </button>
+          <WizardSubmitButton isCreating={isCreating} submitted={submitted} />
         )}
       </div>
     </form>
@@ -379,6 +466,66 @@ function booleanDefault(value: boolean | null | undefined) {
   if (value === true) return "true";
   if (value === false) return "false";
   return "";
+}
+
+function WizardSubmitButton({
+  isCreating,
+  submitted
+}: {
+  isCreating: boolean;
+  submitted: boolean;
+}) {
+  const { pending } = useFormStatus();
+  const disabled = pending || submitted;
+
+  return (
+    <button
+      type="submit"
+      disabled={disabled}
+      className="inline-flex min-w-44 items-center justify-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:cursor-wait disabled:bg-red-400"
+    >
+      {disabled ? (
+        <LoaderCircle className="h-4 w-4 animate-spin" />
+      ) : isCreating ? (
+        <Plus className="h-4 w-4" />
+      ) : (
+        <Check className="h-4 w-4" />
+      )}
+      {disabled
+        ? isCreating
+          ? "Creating school..."
+          : "Submitting..."
+        : isCreating
+          ? "Create school and submit assessment"
+          : "Submit assessment"}
+    </button>
+  );
+}
+
+function AddressField({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="md:col-span-2">
+      <span className="text-sm font-medium text-slate-700">
+        Address<span className="ml-1 text-red-600">*</span>
+      </span>
+      <div className="mt-1 flex flex-col gap-2 sm:flex-row">
+        <input
+          name="address"
+          required
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="min-w-0 flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
+        />
+        <button
+          type="button"
+          data-map-address-button="address"
+          className="inline-flex items-center justify-center rounded-md border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Map address
+        </button>
+      </div>
+    </label>
+  );
 }
 
 function Field({
@@ -407,6 +554,7 @@ function Field({
       <input
         name={name}
         type={type}
+        required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"
@@ -434,6 +582,7 @@ function SelectField({
       </span>
       <select
         name={name}
+        required
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-red-700"

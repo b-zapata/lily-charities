@@ -3,7 +3,7 @@ import { Plus, Search } from "lucide-react";
 import { ConfigWarning } from "@/components/config-warning";
 import { EmptyState } from "@/components/empty-state";
 import { SchoolTableRows } from "@/components/school-table-rows";
-import { getSchools } from "@/lib/data";
+import { getCurrentUser, getSchools } from "@/lib/data";
 
 export default async function SchoolsPage({
   searchParams
@@ -18,7 +18,11 @@ export default async function SchoolsPage({
   }>;
 }) {
   const params = (await searchParams) ?? {};
-  const { schools, total, page, pageSize, totalPages } = await getSchools(params);
+  const [{ schools, total, page, pageSize, totalPages }, user] = await Promise.all([
+    getSchools(params),
+    getCurrentUser()
+  ]);
+  const canCreateSchool = !user || ["manager", "admin"].includes(user.role);
   const firstRecord = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const lastRecord = Math.min(total, page * pageSize);
 
@@ -29,13 +33,15 @@ export default async function SchoolsPage({
           <h1 className="text-xl font-semibold text-slate-950">Schools</h1>
           <p className="text-sm text-slate-500">Official school database and lifecycle status.</p>
         </div>
-        <Link
-          href="/schools/new"
-          className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
-        >
-          <Plus className="h-4 w-4" />
-          New School
-        </Link>
+        {canCreateSchool ? (
+          <Link
+            href="/schools/new"
+            className="inline-flex items-center gap-2 rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800"
+          >
+            <Plus className="h-4 w-4" />
+            Create school
+          </Link>
+        ) : null}
       </div>
 
       <ConfigWarning />

@@ -42,6 +42,7 @@ export default async function SchoolDetailPage({
     photoPageSize?: string;
     assessment?: string;
     submitted?: string;
+    created?: string;
   }>;
 }) {
   const { id } = await params;
@@ -109,7 +110,9 @@ export default async function SchoolDetailPage({
 
       {query.submitted === "assessment" ? (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-          Initial assessment saved.
+          {query.created === "school"
+            ? "School created and initial assessment saved."
+            : "Initial assessment saved."}
         </div>
       ) : null}
 
